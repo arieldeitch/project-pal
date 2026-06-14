@@ -1,30 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, FolderKanban, ListTodo, FileText } from "lucide-react";
+import { ClipboardList, AlertTriangle, Ban, GitBranch, FolderKanban, FileWarning } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore } from "@/lib/mock-data";
-import { ProjectStatusBadge, TaskStatusBadge } from "@/components/StatusBadges";
+import { Button } from "@/components/ui/button";
+import { useStore, hasLogToday, lastLogDate } from "@/lib/mock-data";
+import { ProjectStatusBadge, IssueStatusBadge, BlockerStatusBadge, SeverityBadge } from "@/components/StatusBadges";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "דשבורד - מהיסוד PM" },
-      { name: "description", content: "סקירה כללית של אתרים, פרויקטים ומשימות" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "דשבורד תפעולי - מהיסוד" }] }),
   component: Dashboard,
 });
 
-function StatCard({ title, value, icon: Icon, tone }: { title: string; value: number; icon: any; tone: string }) {
+function StatCard({ title, value, icon: Icon, tone, hint }: { title: string; value: number; icon: any; tone: string; hint?: string }) {
   return (
     <Card>
-      <CardContent className="flex items-center justify-between p-6">
+      <CardContent className="flex items-center justify-between p-5">
         <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="mt-1 text-3xl font-bold text-foreground">{value}</p>
+          <p className="text-xs text-muted-foreground">{title}</p>
+          <p className="mt-1 text-3xl font-bold">{value}</p>
+          {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
         </div>
-        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${tone}`}>
-          <Icon className="h-6 w-6" />
+        <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${tone}`}>
+          <Icon className="h-5 w-5" />
         </div>
       </CardContent>
     </Card>
@@ -32,52 +29,62 @@ function StatCard({ title, value, icon: Icon, tone }: { title: string; value: nu
 }
 
 function Dashboard() {
-  const { sites, projects, tasks, reports } = useStore();
-  const activeProjects = projects.filter((p) => p.status === "active").length;
-  const openTasks = tasks.filter((t) => t.status !== "done").length;
-  const recentProjects = projects.slice(-5).reverse();
-  const recentTasks = tasks.slice(-5).reverse();
-  const siteName = (id: string) => sites.find((s) => s.id === id)?.name ?? "—";
+  const { projects, dailyLogs, issues, blockers, decisions } = useStore();
+  const today = new Date().toISOString().slice(0, 10);
+  const activeProjects = projects.filter((p) => p.status === "active");
+  const logsToday = dailyLogs.filter((l) => l.date === today);
+  const missingToday = activeProjects.filter((p) => !hasLogToday(p.id, dailyLogs));
+  const openIssues = issues.filter((i) => i.status !== "resolved" && i.status !== "closed");
+  const openBlockers = blockers.filter((b) => b.status !== "resolved");
+  const pendingDecisions = decisions.filter((d) => d.status === "pending");
+  const recentLogs = [...dailyLogs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">דשבורד</h1>
-        <p className="text-sm text-muted-foreground">סקירה כללית של הפעילות</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">דשבורד תפעולי</h1>
+          <p className="text-sm text-muted-foreground">מה קורה היום בכל האתרים</p>
+        </div>
+        <Button asChild>
+          <Link to="/daily-logs/new">➕ יומן חדש</Link>
+        </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="סך אתרים" value={sites.length} icon={Building2} tone="bg-primary/10 text-primary" />
-        <StatCard title="פרויקטים פעילים" value={activeProjects} icon={FolderKanban} tone="bg-info/10 text-info" />
-        <StatCard title="משימות פתוחות" value={openTasks} icon={ListTodo} tone="bg-warning/10 text-warning" />
-        <StatCard title="דוחות שהוגשו" value={reports.length} icon={FileText} tone="bg-success/10 text-success" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatCard title="פרויקטים פעילים" value={activeProjects.length} icon={FolderKanban} tone="bg-info/15 text-info" />
+        <StatCard title="יומנים היום" value={logsToday.length} icon={ClipboardList} tone="bg-success/15 text-success" />
+        <StatCard title="יומנים חסרים" value={missingToday.length} icon={FileWarning} tone="bg-destructive/15 text-destructive" hint="פרויקטים ללא יומן היום" />
+        <StatCard title="ליקויים פתוחים" value={openIssues.length} icon={AlertTriangle} tone="bg-warning/15 text-warning" />
+        <StatCard title="חסמים פתוחים" value={openBlockers.length} icon={Ban} tone="bg-destructive/15 text-destructive" />
+        <StatCard title="החלטות ממתינות" value={pendingDecisions.length} icon={GitBranch} tone="bg-warning/15 text-warning" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>פרויקטים אחרונים</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardHeader><CardTitle>יומנים אחרונים</CardTitle></CardHeader>
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>שם</TableHead>
-                  <TableHead>אתר</TableHead>
-                  <TableHead>סטטוס</TableHead>
+                  <TableHead>פרויקט</TableHead>
+                  <TableHead>תאריך</TableHead>
+                  <TableHead>הוגש ע״י</TableHead>
+                  <TableHead>שעות</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentProjects.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      <Link to="/projects/$projectId" params={{ projectId: p.id }} className="hover:underline">
-                        {p.name}
+                {recentLogs.map((l) => (
+                  <TableRow key={l.id}>
+                    <TableCell>
+                      <Link to="/daily-logs/$logId" params={{ logId: l.id }} className="font-medium hover:underline">
+                        {projectName(l.projectId)}
                       </Link>
                     </TableCell>
-                    <TableCell>{siteName(p.siteId)}</TableCell>
-                    <TableCell><ProjectStatusBadge status={p.status} /></TableCell>
+                    <TableCell>{l.date}</TableCell>
+                    <TableCell>{l.submittedBy}</TableCell>
+                    <TableCell className="text-muted-foreground">{l.workHours}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -86,31 +93,71 @@ function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>משימות אחרונות</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardHeader><CardTitle>פרויקטים ללא יומן היום</CardTitle></CardHeader>
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>כותרת</TableHead>
                   <TableHead>פרויקט</TableHead>
                   <TableHead>סטטוס</TableHead>
+                  <TableHead>יומן אחרון</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentTasks.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.title}</TableCell>
-                    <TableCell>{projectName(t.projectId)}</TableCell>
-                    <TableCell><TaskStatusBadge status={t.status} /></TableCell>
+                {missingToday.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <Link to="/projects/$projectId" params={{ projectId: p.id }} className="font-medium hover:underline">{p.name}</Link>
+                    </TableCell>
+                    <TableCell><ProjectStatusBadge status={p.status} /></TableCell>
+                    <TableCell className="text-muted-foreground">{lastLogDate(p.id, dailyLogs) ?? "—"}</TableCell>
                   </TableRow>
                 ))}
+                {missingToday.length === 0 && (
+                  <TableRow><TableCell colSpan={3} className="py-6 text-center text-muted-foreground">כל הפרויקטים עדכניים 🎉</TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>פריטים קריטיים פתוחים</CardTitle></CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>סוג</TableHead>
+                <TableHead>פרויקט</TableHead>
+                <TableHead>כותרת</TableHead>
+                <TableHead>חומרה</TableHead>
+                <TableHead>סטטוס</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {issues.filter((i) => i.severity === "critical" && i.status !== "closed").map((i) => (
+                <TableRow key={i.id}>
+                  <TableCell>ליקוי</TableCell>
+                  <TableCell>{projectName(i.projectId)}</TableCell>
+                  <TableCell className="font-medium">{i.title}</TableCell>
+                  <TableCell><SeverityBadge severity={i.severity} /></TableCell>
+                  <TableCell><IssueStatusBadge status={i.status} /></TableCell>
+                </TableRow>
+              ))}
+              {blockers.filter((b) => b.priority === "critical" && b.status !== "resolved").map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell>חסם</TableCell>
+                  <TableCell>{projectName(b.projectId)}</TableCell>
+                  <TableCell className="font-medium">{b.title}</TableCell>
+                  <TableCell><SeverityBadge severity={b.priority} /></TableCell>
+                  <TableCell><BlockerStatusBadge status={b.status} /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
