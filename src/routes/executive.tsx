@@ -1,102 +1,171 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Building2, FolderKanban, ListTodo, Download } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, projectStatusLabel, taskStatusLabel } from "@/lib/mock-data";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
-import { toast } from "sonner";
+import { useStore, hasLogToday, severityLabel, blockerStatusLabel, issueStatusLabel } from "@/lib/mock-data";
+import { ProjectStatusBadge, SeverityBadge, BlockerStatusBadge, IssueStatusBadge, DecisionStatusBadge, ReportStatusBadge } from "@/components/StatusBadges";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { FolderKanban, ClipboardList, FileWarning, AlertTriangle, AlertOctagon, Ban, GitBranch, Send } from "lucide-react";
 
 export const Route = createFileRoute("/executive")({
-  head: () => ({
-    meta: [
-      { title: "דשבורד הנהלה - מהיסוד PM" },
-      { name: "description", content: "סקירת הנהלה - אתרים, פרויקטים ומשימות" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "דשבורד הנהלה - מהיסוד" }] }),
   component: Executive,
 });
 
-const projectColors = ["#6366f1", "#22c55e", "#f59e0b", "#94a3b8"];
-const taskColors = ["#94a3b8", "#3b82f6", "#22c55e"];
+const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+const PALETTE = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"];
+
+function Stat({ title, value, icon: Icon, tone }: { title: string; value: number; icon: any; tone: string }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between p-4">
+        <div><p className="text-xs text-muted-foreground">{title}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tone}`}><Icon className="h-5 w-5" /></div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function Executive() {
-  const { sites, projects, tasks, reports } = useStore();
-  const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
+  const { projects, dailyLogs, issues, blockers, decisions, reports } = useStore();
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); })();
 
-  const projectsByStatus = (["planning", "active", "on_hold", "completed"] as const).map((s) => ({
-    name: projectStatusLabel[s],
-    value: projects.filter((p) => p.status === s).length,
+  const active = projects.filter((p) => p.status === "active");
+  const logsToday = dailyLogs.filter((l) => l.date === today);
+  const missingToday = active.filter((p) => !hasLogToday(p.id, dailyLogs));
+  const openIssues = issues.filter((i) => i.status !== "closed" && i.status !== "resolved");
+  const criticalIssues = issues.filter((i) => i.severity === "critical" && i.status !== "closed");
+  const openBlockers = blockers.filter((b) => b.status !== "resolved");
+  const pendingDecisions = decisions.filter((d) => d.status === "pending");
+  const reportsThisWeek = reports.filter((r) => r.sentAt && r.sentAt.slice(0, 10) >= weekAgo);
+
+  const issueByStatus = (Object.keys(issueStatusLabel) as Array<keyof typeof issueStatusLabel>).map((s) => ({
+    name: issueStatusLabel[s], value: issues.filter((i) => i.status === s).length,
   }));
-  const tasksByStatus = (["open", "in_progress", "done"] as const).map((s) => ({
-    name: taskStatusLabel[s],
-    value: tasks.filter((t) => t.status === s).length,
+  const blockerByPriority = (["low", "medium", "high", "critical"] as const).map((p) => ({
+    name: severityLabel[p], value: blockers.filter((b) => b.priority === p).length,
   }));
-  const recentReports = [...reports].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  const logsByProject = projects.map((p) => ({ name: p.name.slice(0, 12), value: dailyLogs.filter((l) => l.projectId === p.id).length }));
+
+  const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">דשבורד הנהלה</h1>
-          <p className="text-sm text-muted-foreground">סקירה ארגונית</p>
-        </div>
-        <Button variant="outline" onClick={() => toast.info("ייצוא ל-Excel יתווסף בקרוב")}>
-          <Download className="ml-2 h-4 w-4" />ייצוא ל-Excel
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">דשבורד הנהלה</h1>
+        <p className="text-sm text-muted-foreground">שקיפות מלאה על מצב הביצוע בשטח</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div><p className="text-sm text-muted-foreground">אתרים</p><p className="mt-1 text-3xl font-bold">{sites.length}</p></div>
-            <Building2 className="h-10 w-10 text-primary/40" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div><p className="text-sm text-muted-foreground">פרויקטים</p><p className="mt-1 text-3xl font-bold">{projects.length}</p></div>
-            <FolderKanban className="h-10 w-10 text-info/40" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div><p className="text-sm text-muted-foreground">משימות</p><p className="mt-1 text-3xl font-bold">{tasks.length}</p></div>
-            <ListTodo className="h-10 w-10 text-warning/40" />
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        <Stat title="פרויקטים פעילים" value={active.length} icon={FolderKanban} tone="bg-info/15 text-info" />
+        <Stat title="יומנים היום" value={logsToday.length} icon={ClipboardList} tone="bg-success/15 text-success" />
+        <Stat title="יומנים חסרים" value={missingToday.length} icon={FileWarning} tone="bg-destructive/15 text-destructive" />
+        <Stat title="ליקויים פתוחים" value={openIssues.length} icon={AlertTriangle} tone="bg-warning/15 text-warning" />
+        <Stat title="ליקויים קריטיים" value={criticalIssues.length} icon={AlertOctagon} tone="bg-destructive/15 text-destructive" />
+        <Stat title="חסמים פתוחים" value={openBlockers.length} icon={Ban} tone="bg-destructive/15 text-destructive" />
+        <Stat title="החלטות ממתינות" value={pendingDecisions.length} icon={GitBranch} tone="bg-warning/15 text-warning" />
+        <Stat title="דוחות נשלחו השבוע" value={reportsThisWeek.length} icon={Send} tone="bg-success/15 text-success" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>פרויקטים לפי סטטוס</CardTitle></CardHeader>
+          <CardHeader><CardTitle>ליקויים לפי סטטוס</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={projectsByStatus}>
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie data={issueByStatus} dataKey="value" nameKey="name" outerRadius={80} label>
+                  {issueByStatus.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                </Pie>
                 <Tooltip />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {projectsByStatus.map((_, i) => <Cell key={i} fill={projectColors[i]} />)}
-                </Bar>
-              </BarChart>
+                <Legend />
+              </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>משימות לפי סטטוס</CardTitle></CardHeader>
+          <CardHeader><CardTitle>חסמים לפי עדיפות</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={tasksByStatus}>
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {tasksByStatus.map((_, i) => <Cell key={i} fill={taskColors[i]} />)}
-                </Bar>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={blockerByPriority}>
+                <XAxis dataKey="name" /><YAxis allowDecimals={false} /><Tooltip />
+                <Bar dataKey="value" fill={PALETTE[3]} />
               </BarChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle>יומנים לפי פרויקט</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={logsByProject}>
+                <XAxis dataKey="name" /><YAxis allowDecimals={false} /><Tooltip />
+                <Bar dataKey="value" fill={PALETTE[0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>פרויקטים ללא יומן היום</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader><TableRow><TableHead>פרויקט</TableHead><TableHead>מנהל</TableHead><TableHead>סטטוס</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {missingToday.map((p) => (
+                  <TableRow key={p.id}><TableCell><Link to="/projects/$projectId" params={{ projectId: p.id }} className="hover:underline">{p.name}</Link></TableCell><TableCell>{p.manager}</TableCell><TableCell><ProjectStatusBadge status={p.status} /></TableCell></TableRow>
+                ))}
+                {missingToday.length === 0 && <TableRow><TableCell colSpan={3} className="py-6 text-center text-muted-foreground">הכל מעודכן</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>ליקויים קריטיים פתוחים</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader><TableRow><TableHead>פרויקט</TableHead><TableHead>כותרת</TableHead><TableHead>סטטוס</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {criticalIssues.map((i) => (
+                  <TableRow key={i.id}><TableCell>{projectName(i.projectId)}</TableCell><TableCell className="font-medium">{i.title}</TableCell><TableCell><IssueStatusBadge status={i.status} /></TableCell></TableRow>
+                ))}
+                {criticalIssues.length === 0 && <TableRow><TableCell colSpan={3} className="py-6 text-center text-muted-foreground">אין</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>חסמים פתוחים</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader><TableRow><TableHead>פרויקט</TableHead><TableHead>כותרת</TableHead><TableHead>עדיפות</TableHead><TableHead>סטטוס</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {openBlockers.map((b) => (
+                  <TableRow key={b.id}><TableCell>{projectName(b.projectId)}</TableCell><TableCell className="font-medium">{b.title}</TableCell><TableCell><SeverityBadge severity={b.priority} /></TableCell><TableCell><BlockerStatusBadge status={b.status} /></TableCell></TableRow>
+                ))}
+                {openBlockers.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">אין</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>החלטות ממתינות</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader><TableRow><TableHead>פרויקט</TableHead><TableHead>נושא</TableHead><TableHead>החלטה ע״י</TableHead><TableHead>סטטוס</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {pendingDecisions.map((d) => (
+                  <TableRow key={d.id}><TableCell>{projectName(d.projectId)}</TableCell><TableCell className="font-medium">{d.title}</TableCell><TableCell>{d.owner}</TableCell><TableCell><DecisionStatusBadge status={d.status} /></TableCell></TableRow>
+                ))}
+                {pendingDecisions.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">אין</TableCell></TableRow>}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
@@ -105,26 +174,11 @@ function Executive() {
         <CardHeader><CardTitle>דוחות אחרונים</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>תאריך</TableHead>
-                <TableHead>פרויקט</TableHead>
-                <TableHead>מגיש</TableHead>
-                <TableHead>תוכן</TableHead>
-              </TableRow>
-            </TableHeader>
+            <TableHeader><TableRow><TableHead>תאריך</TableHead><TableHead>פרויקט</TableHead><TableHead>סטטוס</TableHead></TableRow></TableHeader>
             <TableBody>
-              {recentReports.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{r.date}</TableCell>
-                  <TableCell className="font-medium">{projectName(r.projectId)}</TableCell>
-                  <TableCell>{r.submittedBy}</TableCell>
-                  <TableCell className="max-w-md truncate text-muted-foreground">{r.text}</TableCell>
-                </TableRow>
+              {[...reports].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map((r) => (
+                <TableRow key={r.id}><TableCell><Link to="/reports/$reportId" params={{ reportId: r.id }} className="hover:underline">{r.date}</Link></TableCell><TableCell>{projectName(r.projectId)}</TableCell><TableCell><ReportStatusBadge status={r.status} /></TableCell></TableRow>
               ))}
-              {recentReports.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">אין דוחות</TableCell></TableRow>
-              )}
             </TableBody>
           </Table>
         </CardContent>

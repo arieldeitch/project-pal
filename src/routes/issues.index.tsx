@@ -1,0 +1,154 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useStore, store, type IssueStatus, type Severity } from "@/lib/mock-data";
+import { IssueStatusBadge, SeverityBadge } from "@/components/StatusBadges";
+import { MessageSquare, MapPin, Plus, Pencil } from "lucide-react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/issues/")({
+  head: () => ({ meta: [{ title: "ליקויים - מהיסוד" }] }),
+  component: IssuesPage,
+});
+
+function IssuesPage() {
+  const { issues, projects } = useStore();
+  const [filter, setFilter] = useState<"all" | "open" | "critical">("all");
+  const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
+  const filtered = issues.filter((i) => {
+    if (filter === "open") return i.status !== "closed" && i.status !== "resolved";
+    if (filter === "critical") return i.severity === "critical";
+    return true;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">ליקויים</h1>
+          <p className="text-sm text-muted-foreground">פאנץ׳ ליסט וליקויי איכות</p>
+        </div>
+        <IssueDialog trigger={<Button><Plus className="ml-2 h-4 w-4" />ליקוי חדש</Button>} />
+      </div>
+
+      <div className="flex gap-2">
+        {(["all", "open", "critical"] as const).map((f) => (
+          <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" onClick={() => setFilter(f)}>
+            {f === "all" ? "הכל" : f === "open" ? "פתוחים" : "קריטיים"}
+          </Button>
+        ))}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((i) => (
+          <Card key={i.id}>
+            <CardContent className="space-y-3 p-4">
+              {i.photos[0] && <img src={i.photos[0].url} alt="" className="h-32 w-full rounded object-cover" />}
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-semibold">{i.title}</h3>
+                <SeverityBadge severity={i.severity} />
+              </div>
+              <p className="text-sm text-muted-foreground">{i.description}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>{projectName(i.projectId)}</span>
+                <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{i.location}</span>
+                <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{i.comments.length}</span>
+              </div>
+              <div className="flex items-center justify-between border-t pt-2">
+                <IssueStatusBadge status={i.status} />
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" onClick={() => { store.updateIssue(i.id, { status: i.status === "resolved" ? "reopened" : "resolved" }); toast.success("עודכן"); }}>
+                    {i.status === "resolved" ? "פתח מחדש" : "סמן כטופל"}
+                  </Button>
+                  <IssueDialog issue={i} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
+                </div>
+              </div>
+              <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => toast.info("סימון על תמונה - בפיתוח")}>📍 סימון על תמונה (Placeholder)</Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function IssueDialog({ trigger, issue }: { trigger: React.ReactNode; issue?: ReturnType<typeof useStore>["issues"][number] }) {
+  const { projects } = useStore();
+  const [open, setOpen] = useState(false);
+  const [projectId, setProjectId] = useState(issue?.projectId ?? projects[0]?.id ?? "");
+  const [title, setTitle] = useState(issue?.title ?? "");
+  const [description, setDescription] = useState(issue?.description ?? "");
+  const [location, setLocation] = useState(issue?.location ?? "");
+  const [responsibleContractor, setResp] = useState(issue?.responsibleContractor ?? "");
+  const [assignedTo, setAssigned] = useState(issue?.assignedTo ?? "");
+  const [dueDate, setDueDate] = useState(issue?.dueDate ?? "");
+  const [severity, setSeverity] = useState<Severity>(issue?.severity ?? "medium");
+  const [status, setStatus] = useState<IssueStatus>(issue?.status ?? "open");
+
+  const submit = () => {
+    if (!title.trim()) return toast.error("יש להזין כותרת");
+    if (issue) {
+      store.updateIssue(issue.id, { projectId, title, description, location, responsibleContractor, assignedTo, dueDate, severity, status });
+      toast.success("עודכן");
+    } else {
+      store.addIssue({ projectId, title, description, location, responsibleContractor, assignedTo, dueDate, severity, status });
+      toast.success("נוצר");
+    }
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>{issue ? "עריכת ליקוי" : "ליקוי חדש"}</DialogTitle></DialogHeader>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <Label>פרויקט</Label>
+            <Select value={projectId} onValueChange={setProjectId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-2"><Label>כותרת</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="md:col-span-2"><Label>תיאור</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+          <div><Label>מיקום</Label><Input value={location} onChange={(e) => setLocation(e.target.value)} /></div>
+          <div><Label>קבלן אחראי</Label><Input value={responsibleContractor} onChange={(e) => setResp(e.target.value)} /></div>
+          <div><Label>אחראי טיפול</Label><Input value={assignedTo} onChange={(e) => setAssigned(e.target.value)} /></div>
+          <div><Label>תאריך יעד</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
+          <div>
+            <Label>חומרה</Label>
+            <Select value={severity} onValueChange={(v) => setSeverity(v as Severity)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">נמוך</SelectItem><SelectItem value="medium">בינוני</SelectItem>
+                <SelectItem value="high">גבוה</SelectItem><SelectItem value="critical">קריטי</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>סטטוס</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as IssueStatus)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">פתוח</SelectItem><SelectItem value="in_progress">בטיפול</SelectItem>
+                <SelectItem value="resolved">טופל</SelectItem><SelectItem value="reopened">נפתח מחדש</SelectItem>
+                <SelectItem value="closed">סגור</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button>
+          <Button onClick={submit}>שמירה</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
