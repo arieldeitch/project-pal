@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ExecutiveRouteImport } from './routes/executive'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SitesIndexRouteImport } from './routes/sites.index'
 import { Route as SitesSiteIdRouteImport } from './routes/sites.$siteId'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
+const ExecutiveRoute = ExecutiveRouteImport.update({
+  id: '/executive',
+  path: '/executive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/executive': typeof ExecutiveRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/sites/$siteId': typeof SitesSiteIdRoute
   '/sites/': typeof SitesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/executive': typeof ExecutiveRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/sites/$siteId': typeof SitesSiteIdRoute
   '/sites': typeof SitesIndexRoute
@@ -50,20 +58,33 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/executive': typeof ExecutiveRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/sites/$siteId': typeof SitesSiteIdRoute
   '/sites/': typeof SitesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projects/$projectId' | '/sites/$siteId' | '/sites/'
+  fullPaths:
+    | '/'
+    | '/executive'
+    | '/projects/$projectId'
+    | '/sites/$siteId'
+    | '/sites/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects/$projectId' | '/sites/$siteId' | '/sites'
-  id: '__root__' | '/' | '/projects/$projectId' | '/sites/$siteId' | '/sites/'
+  to: '/' | '/executive' | '/projects/$projectId' | '/sites/$siteId' | '/sites'
+  id:
+    | '__root__'
+    | '/'
+    | '/executive'
+    | '/projects/$projectId'
+    | '/sites/$siteId'
+    | '/sites/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ExecutiveRoute: typeof ExecutiveRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   SitesSiteIdRoute: typeof SitesSiteIdRoute
   SitesIndexRoute: typeof SitesIndexRoute
@@ -71,6 +92,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/executive': {
+      id: '/executive'
+      path: '/executive'
+      fullPath: '/executive'
+      preLoaderRoute: typeof ExecutiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +132,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExecutiveRoute: ExecutiveRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   SitesSiteIdRoute: SitesSiteIdRoute,
   SitesIndexRoute: SitesIndexRoute,
