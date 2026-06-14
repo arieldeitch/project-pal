@@ -8,7 +8,7 @@ import { SiteFormDialog } from "@/components/CrudDialogs";
 import { SiteStatusBadge } from "@/components/StatusBadges";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/sites")({
+export const Route = createFileRoute("/sites/")({
   head: () => ({
     meta: [
       { title: "אתרים - מהיסוד PM" },
