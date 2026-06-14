@@ -1,5 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Building2, BarChart3, HardHat } from "lucide-react";
+import {
+  LayoutDashboard,
+  FolderKanban,
+  ClipboardList,
+  AlertTriangle,
+  Ban,
+  GitBranch,
+  FileText,
+  BarChart3,
+  HardHat,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -13,8 +23,13 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "דשבורד", url: "/", icon: LayoutDashboard },
-  { title: "אתרים", url: "/sites", icon: Building2 },
+  { title: "דשבורד", url: "/", icon: LayoutDashboard, exact: true },
+  { title: "פרויקטים", url: "/projects", icon: FolderKanban },
+  { title: "יומני עבודה", url: "/daily-logs", icon: ClipboardList },
+  { title: "ליקויים", url: "/issues", icon: AlertTriangle },
+  { title: "חסמים", url: "/blockers", icon: Ban },
+  { title: "החלטות", url: "/decisions", icon: GitBranch },
+  { title: "דוחות", url: "/reports", icon: FileText },
   { title: "דשבורד הנהלה", url: "/executive", icon: BarChart3 },
 ];
 
@@ -29,8 +44,8 @@ export function AppSidebar() {
             <HardHat className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-sidebar-foreground">מהיסוד PM</span>
-            <span className="text-xs text-sidebar-foreground/60">ניהול פרויקטים</span>
+            <span className="text-sm font-bold text-sidebar-foreground">מהיסוד</span>
+            <span className="text-xs text-sidebar-foreground/60">ניהול ביצוע פרויקטים</span>
           </div>
         </div>
       </SidebarHeader>
@@ -40,7 +55,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
+                const active = item.exact ? pathname === item.url : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={active}>
