@@ -82,10 +82,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "מהיסוד PM - ניהול פרויקטים" },
       { name: "description", content: "פלטפורמת ניהול פרויקטים פנימית" },
-      { property: "og:title", content: "מהיסוד PM" },
+      { property: "og:title", content: "מהיסוד PM - ניהול פרויקטים" },
       { property: "og:description", content: "פלטפורמת ניהול פרויקטים פנימית" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "מהיסוד PM - ניהול פרויקטים" },
+      { name: "twitter:description", content: "פלטפורמת ניהול פרויקטים פנימית" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c03e7547-9d84-4999-bb54-78d7a3e969ad/id-preview-b63d4d9c--6b3cd8d0-822e-4893-a6f9-27990122ba5f.lovable.app-1781463627107.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c03e7547-9d84-4999-bb54-78d7a3e969ad/id-preview-b63d4d9c--6b3cd8d0-822e-4893-a6f9-27990122ba5f.lovable.app-1781463627107.png" },
     ],
     links: [
       {
