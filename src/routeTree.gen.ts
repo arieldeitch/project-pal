@@ -11,7 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ExecutiveRouteImport } from './routes/executive'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportsIndexRouteImport } from './routes/reports.index'
+import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as IssuesIndexRouteImport } from './routes/issues.index'
+import { Route as DecisionsIndexRouteImport } from './routes/decisions.index'
+import { Route as DailyLogsIndexRouteImport } from './routes/daily-logs.index'
+import { Route as BlockersIndexRouteImport } from './routes/blockers.index'
+import { Route as ReportsReportIdRouteImport } from './routes/reports.$reportId'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
+import { Route as DailyLogsNewRouteImport } from './routes/daily-logs.new'
+import { Route as DailyLogsLogIdRouteImport } from './routes/daily-logs.$logId'
 
 const ExecutiveRoute = ExecutiveRouteImport.update({
   id: '/executive',
@@ -23,40 +32,158 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsIndexRoute = ReportsIndexRouteImport.update({
+  id: '/reports/',
+  path: '/reports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IssuesIndexRoute = IssuesIndexRouteImport.update({
+  id: '/issues/',
+  path: '/issues/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DecisionsIndexRoute = DecisionsIndexRouteImport.update({
+  id: '/decisions/',
+  path: '/decisions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DailyLogsIndexRoute = DailyLogsIndexRouteImport.update({
+  id: '/daily-logs/',
+  path: '/daily-logs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlockersIndexRoute = BlockersIndexRouteImport.update({
+  id: '/blockers/',
+  path: '/blockers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsReportIdRoute = ReportsReportIdRouteImport.update({
+  id: '/reports/$reportId',
+  path: '/reports/$reportId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DailyLogsNewRoute = DailyLogsNewRouteImport.update({
+  id: '/daily-logs/new',
+  path: '/daily-logs/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DailyLogsLogIdRoute = DailyLogsLogIdRouteImport.update({
+  id: '/daily-logs/$logId',
+  path: '/daily-logs/$logId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/executive': typeof ExecutiveRoute
+  '/daily-logs/$logId': typeof DailyLogsLogIdRoute
+  '/daily-logs/new': typeof DailyLogsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/reports/$reportId': typeof ReportsReportIdRoute
+  '/blockers/': typeof BlockersIndexRoute
+  '/daily-logs/': typeof DailyLogsIndexRoute
+  '/decisions/': typeof DecisionsIndexRoute
+  '/issues/': typeof IssuesIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
+  '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/executive': typeof ExecutiveRoute
+  '/daily-logs/$logId': typeof DailyLogsLogIdRoute
+  '/daily-logs/new': typeof DailyLogsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/reports/$reportId': typeof ReportsReportIdRoute
+  '/blockers': typeof BlockersIndexRoute
+  '/daily-logs': typeof DailyLogsIndexRoute
+  '/decisions': typeof DecisionsIndexRoute
+  '/issues': typeof IssuesIndexRoute
+  '/projects': typeof ProjectsIndexRoute
+  '/reports': typeof ReportsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/executive': typeof ExecutiveRoute
+  '/daily-logs/$logId': typeof DailyLogsLogIdRoute
+  '/daily-logs/new': typeof DailyLogsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/reports/$reportId': typeof ReportsReportIdRoute
+  '/blockers/': typeof BlockersIndexRoute
+  '/daily-logs/': typeof DailyLogsIndexRoute
+  '/decisions/': typeof DecisionsIndexRoute
+  '/issues/': typeof IssuesIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
+  '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/executive' | '/projects/$projectId'
+  fullPaths:
+    | '/'
+    | '/executive'
+    | '/daily-logs/$logId'
+    | '/daily-logs/new'
+    | '/projects/$projectId'
+    | '/reports/$reportId'
+    | '/blockers/'
+    | '/daily-logs/'
+    | '/decisions/'
+    | '/issues/'
+    | '/projects/'
+    | '/reports/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/executive' | '/projects/$projectId'
-  id: '__root__' | '/' | '/executive' | '/projects/$projectId'
+  to:
+    | '/'
+    | '/executive'
+    | '/daily-logs/$logId'
+    | '/daily-logs/new'
+    | '/projects/$projectId'
+    | '/reports/$reportId'
+    | '/blockers'
+    | '/daily-logs'
+    | '/decisions'
+    | '/issues'
+    | '/projects'
+    | '/reports'
+  id:
+    | '__root__'
+    | '/'
+    | '/executive'
+    | '/daily-logs/$logId'
+    | '/daily-logs/new'
+    | '/projects/$projectId'
+    | '/reports/$reportId'
+    | '/blockers/'
+    | '/daily-logs/'
+    | '/decisions/'
+    | '/issues/'
+    | '/projects/'
+    | '/reports/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExecutiveRoute: typeof ExecutiveRoute
+  DailyLogsLogIdRoute: typeof DailyLogsLogIdRoute
+  DailyLogsNewRoute: typeof DailyLogsNewRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  ReportsReportIdRoute: typeof ReportsReportIdRoute
+  BlockersIndexRoute: typeof BlockersIndexRoute
+  DailyLogsIndexRoute: typeof DailyLogsIndexRoute
+  DecisionsIndexRoute: typeof DecisionsIndexRoute
+  IssuesIndexRoute: typeof IssuesIndexRoute
+  ProjectsIndexRoute: typeof ProjectsIndexRoute
+  ReportsIndexRoute: typeof ReportsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,11 +202,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/': {
+      id: '/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issues/': {
+      id: '/issues/'
+      path: '/issues'
+      fullPath: '/issues/'
+      preLoaderRoute: typeof IssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/decisions/': {
+      id: '/decisions/'
+      path: '/decisions'
+      fullPath: '/decisions/'
+      preLoaderRoute: typeof DecisionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily-logs/': {
+      id: '/daily-logs/'
+      path: '/daily-logs'
+      fullPath: '/daily-logs/'
+      preLoaderRoute: typeof DailyLogsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blockers/': {
+      id: '/blockers/'
+      path: '/blockers'
+      fullPath: '/blockers/'
+      preLoaderRoute: typeof BlockersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/$reportId': {
+      id: '/reports/$reportId'
+      path: '/reports/$reportId'
+      fullPath: '/reports/$reportId'
+      preLoaderRoute: typeof ReportsReportIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/$projectId': {
       id: '/projects/$projectId'
       path: '/projects/$projectId'
       fullPath: '/projects/$projectId'
       preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily-logs/new': {
+      id: '/daily-logs/new'
+      path: '/daily-logs/new'
+      fullPath: '/daily-logs/new'
+      preLoaderRoute: typeof DailyLogsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily-logs/$logId': {
+      id: '/daily-logs/$logId'
+      path: '/daily-logs/$logId'
+      fullPath: '/daily-logs/$logId'
+      preLoaderRoute: typeof DailyLogsLogIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,7 +278,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExecutiveRoute: ExecutiveRoute,
+  DailyLogsLogIdRoute: DailyLogsLogIdRoute,
+  DailyLogsNewRoute: DailyLogsNewRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  ReportsReportIdRoute: ReportsReportIdRoute,
+  BlockersIndexRoute: BlockersIndexRoute,
+  DailyLogsIndexRoute: DailyLogsIndexRoute,
+  DecisionsIndexRoute: DecisionsIndexRoute,
+  IssuesIndexRoute: IssuesIndexRoute,
+  ProjectsIndexRoute: ProjectsIndexRoute,
+  ReportsIndexRoute: ReportsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
