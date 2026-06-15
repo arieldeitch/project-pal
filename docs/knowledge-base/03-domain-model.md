@@ -199,3 +199,94 @@ Key type aliases:
 - `DecisionStatus` = `"pending" | "approved" | "rejected" | "implemented"`
 - `ReportStatus` = `"ready" | "sent"`
 - `ReportType` = `"daily" | "weekly" | "monthly"`
+
+---
+
+## Phase 2 Entities (NOT yet implemented — pending product owner approval after deployment)
+
+These entities will be required for Phase 2 field reporting and PDF generation. They are defined here for planning purposes only. Do not create migrations or TypeScript types until Phase 2 is approved.
+
+### field_note
+Categorized observation attached to a daily log.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| daily_log_id | uuid | FK → daily_log |
+| category | text | `supervision` \| `safety` \| `quality` \| `general` |
+| body | text | Note content |
+| created_by | text | Author name |
+| created_at | timestamptz | Auto |
+
+### engineering_finding
+An inspection finding or claim to be responded to.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| project_id | uuid | FK → project |
+| visit_date | date | Inspection visit date |
+| finding_number | int | Sequential per project |
+| claim_text | text | The finding / claim as stated |
+| location | text | Building location of finding |
+| documents_reviewed | text | List of documents referenced |
+| created_by | text | Inspector / report editor |
+| created_at | timestamptz | Auto |
+
+### engineering_response
+Professional response to a single engineering finding.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| finding_id | uuid | FK → engineering_finding |
+| response_text | text | Engineer's professional response |
+| standard_reference | text | Standard / regulation cited |
+| quoted_standard_text | text | Exact text from the standard |
+| status | text | `pending` \| `responded` \| `accepted` |
+| created_at | timestamptz | Auto |
+
+### cost_estimate
+Cost estimate line item for a finding response.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| finding_id | uuid | FK → engineering_finding |
+| description | text | Work item description |
+| quantity | numeric | |
+| unit | text | e.g. `מ"ר`, `יח'`, `מ"ל` |
+| unit_price | numeric | Price per unit (ILS) |
+| total | numeric | Computed: quantity × unit_price |
+| supervision_pct | numeric | Supervision overhead % |
+| vat_pct | numeric | VAT % (typically 18%) |
+| total_with_vat | numeric | Final total including VAT |
+
+### generated_pdf_report
+Stored reference to a generated branded PDF.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| report_type | text | `daily_log` \| `engineering_response` |
+| source_id | uuid | FK → report or engineering_finding |
+| storage_key | text | Supabase Storage path |
+| generated_at | timestamptz | Auto |
+| generated_by | uuid | FK → auth.users |
+
+### Phase 2 Entity Relationships
+
+```
+project
+  ├─ (existing MVP entities)
+  ├─ engineering_finding (many)
+  │    ├─ engineering_response (one)
+  │    │    └─ standard_reference (embedded text fields)
+  │    ├─ cost_estimate (many)
+  │    └─ photo!finding_id (many)
+  └─ generated_pdf_report (many)
+
+daily_log
+  └─ field_note (many)
+       └─ photo!field_note_id (many)
+```

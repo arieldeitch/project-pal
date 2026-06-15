@@ -1,7 +1,10 @@
 # Report Generation Engine Design — Mehayesod Platform
 
-> Version 1.1 | 2026-06-15
+> Version 1.2 | 2026-06-15
+> Changes from v1.1: Added Phase 2 report types section.
 > Changes from v1.0: RC-01 — Photo join query fixed. The polymorphic `photos:photo!entity_id` join was incompatible with PostgREST. Now uses the typed FK `photos:photo!daily_log_id`.
+>
+> **Phase 2 note:** Two branded PDF report types are defined for Phase 2 based on reference documents provided by the product owner. See `docs/knowledge-base/13-reference-report-specifications.md` for full field specifications. Phase 2 is not yet implemented — this document covers the current MVP architecture only.
 
 ---
 

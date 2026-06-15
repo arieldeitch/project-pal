@@ -1,7 +1,7 @@
 # Knowledge Base — Mehayesod Platform
 
 > This folder is the single source of truth for a new developer or AI session starting work on this codebase.
-> Last updated: 2026-06-15
+> Last updated: 2026-06-15 (post-auth, Phase 2 scope added)
 
 ---
 
@@ -22,6 +22,7 @@
 | [10-decision-log.md](./10-decision-log.md) | Key technical decisions and their rationale |
 | [11-risk-register.md](./11-risk-register.md) | Known risks and mitigation plans |
 | [12-glossary.md](./12-glossary.md) | Hebrew terms, domain vocabulary, acronyms |
+| [13-reference-report-specifications.md](./13-reference-report-specifications.md) | Phase 2 PDF output specs: Daily Work Log and Engineering Response reference documents |
 
 ---
 

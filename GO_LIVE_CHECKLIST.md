@@ -8,7 +8,7 @@
 
 - [ ] **1.1** `.env.local` exists in project root with real values (not placeholder)
 - [ ] **1.2** `VITE_SUPABASE_URL` set to `https://[ref].supabase.co` format
-- [ ] **1.3** `VITE_SUPABASE_ANON_KEY` set (starts with `eyJ...`)
+- [ ] **1.3** `VITE_SUPABASE_ANON_KEY` set (starts with `eyJ...` or `sb_publishable_`)
 - [ ] **1.4** `.env.local` is NOT committed to git (verify with `git status`)
 - [ ] **1.5** `npm run build` completes with `✓ built` and no errors
 - [ ] **1.6** No service_role key is present anywhere in `src/` (audit: `grep -r "service_role" src/`)

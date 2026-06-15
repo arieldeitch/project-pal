@@ -47,11 +47,30 @@ Mehayesod replaces all of this with a single tool.
 - Not a mobile app (web-responsive but not native)
 - Not a public marketplace
 
+## MVP Scope Boundary
+
+The following features are explicitly OUT of the current MVP and must not be added until the product owner approves Phase 2 after Supabase deployment is verified:
+
+- Branded PDF report generation
+- Engineering response / findings workflow
+- Cost estimate tables
+- Standard / regulation references
+- Digital signature fields
+- Photo storage and upload (Supabase Storage bucket not yet configured)
+- Email delivery of reports
+- Weekly / monthly automated report generation
+
 ---
 
 ## Product Stage
 
-**Internal MVP** — single company deployment. The architecture is designed to scale to multi-tenant SaaS later but currently targets one company.
+**Phase 1 (current):** Operational MVP — single company deployment. The architecture is designed to scale to multi-tenant SaaS later but currently targets one company. Supabase backend is configured; migrations are pending deployment.
+
+**Phase 2 (next):** Field reporting and professional PDF generation. Based on reference documents provided by the product owner, Phase 2 will add branded PDF output for two report types:
+- Daily Work Log PDF (יומן עבודה) — structured daily site activity record for clients and supervision
+- Engineering Response PDF (דוח תגובה הנדסי) — professional response to inspection findings with cost estimates, standard references, and digital signature
+
+**Phase 3 (future, not yet scoped):** Advanced analytics and automation. Requires explicit product owner approval before any implementation.
 
 ---
 

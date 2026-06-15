@@ -111,3 +111,73 @@ pending → approved → implemented
 |---|---|
 | `ready` | Generated, not yet sent |
 | `sent` | Marked as sent to project owner |
+
+---
+
+## Phase 2 Workflows (NOT YET IMPLEMENTED — pending approval after deployment)
+
+### Daily Work Log PDF Workflow (יומן עבודה)
+
+The reference daily work log PDF (provided by product owner) establishes the target output format for this workflow.
+
+```
+Site Manager fills daily log
+  ├─ General information (project, date range, address, site roles)
+  ├─ Role holders table (project manager, work manager, safety officer, etc.)
+  ├─ Contractors table (contractor name, trade, worker count, work location, description)
+  ├─ Equipment and materials table
+  ├─ Notes / observations (with category: supervision / safety / quality)
+  │    └─ Photos attached per note
+  └─ Report writer signature
+
+Manager reviews and generates branded PDF
+  └─ PDF matches reference layout with company logo, header, footer, page numbers
+```
+
+**Key differences from current MVP daily log:**
+- Date range (not single date) — covers a work period
+- Formal role holder table (work manager, safety assistant, additional role holders)
+- Work location per contractor entry
+- Categorized field notes (supervision, safety, quality)
+- Photos embedded directly in note entries
+- Signature field at end of document
+
+---
+
+### Engineering Response Workflow (דוח תגובה הנדסי)
+
+The reference engineering response PDF establishes the target output format for professional engineering report responses.
+
+```
+Engineer creates response report
+  ├─ Client details (name, property address)
+  ├─ Report metadata (editor, visit date, report number, purpose)
+  ├─ Documents reviewed list
+  ├─ Professional declaration section
+  ├─ Building description
+  └─ For each finding / claim:
+       ├─ Finding text (as stated in inspection report)
+       ├─ Engineer's response text
+       ├─ Standard / regulation reference
+       ├─ Quoted standard text
+       ├─ Photos documenting finding and/or response
+       └─ Cost estimate:
+            ├─ Description
+            ├─ Quantity + unit
+            ├─ Unit price
+            ├─ Total
+            ├─ Supervision %
+            ├─ VAT %
+            └─ Final total
+
+Report summary
+  ├─ Total number of claims
+  ├─ Number responded
+  ├─ Number pending response
+  └─ Engineer's signature section
+
+PDF output
+  └─ Branded layout with logo, contact details, page footer
+```
+
+**Business rule:** A cost estimate must be attached to each finding before the report can be marked complete. Summary totals are computed automatically from line items.

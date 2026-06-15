@@ -1,6 +1,7 @@
 # 08 — Current Status
 
 > As of: 2026-06-15
+> Last updated: 2026-06-15 (post-auth, pre-deployment)
 
 ---
 
@@ -8,35 +9,40 @@
 
 | Phase | Description | Status |
 |---|---|---|
-| Phase 1 | Database foundation (tables, views, triggers, seed) | ✅ Complete |
-| Phase 2 | Real data integration (Supabase client, repositories, hooks, route rewrites) | ✅ Complete |
-| Phase 3 | Authentication + RLS + Storage | ❌ Not started |
-| Phase 4 | PDF export + email sending | ❌ Not started |
+| Database foundation | Tables, views, triggers, migrations (12 files) | ✅ Complete |
+| Real data integration | Supabase client, repositories, TanStack Query hooks | ✅ Complete |
+| Authentication + RLS | Login page, AuthGate, strict role-based RLS (12 migrations written) | ✅ Complete — migrations pending DB deployment |
+| Supabase connection | Credentials configured in .env.local, DEV_BYPASS deactivated | ✅ Connected — migrations not yet applied |
+| Migrations applied to DB | 12 migration files run in Supabase | ⏳ Pending — product owner to execute manually |
+| Phase 2: PDF Generation | Daily Work Log PDF + Engineering Response PDF | ❌ Not started — post-deployment |
+| Phase 2: Photo Storage | Supabase Storage bucket, real photo upload | ❌ Not started — post-deployment |
 
 ---
 
 ## What Works Right Now
 
-The app builds and is architecturally complete for Phase 2. When connected to a real Supabase project:
+The app builds cleanly and is feature-complete for the MVP. The Supabase project is reachable and credentials are valid. All that remains before first real use is applying migrations and creating the admin user.
 
-- All 12 routes will fetch real data from Supabase
-- Dashboard will show live aggregate counts
-- All create/edit forms will write to the database
-- Issue resolve, report mark-sent, log generate-report — all mutations work
-- Cache invalidation ensures UI stays in sync after mutations
+- All 18 routes render correctly
+- Authentication enforces login (DEV_BYPASS is inactive)
+- All create/edit/resolve mutations are implemented
+- Executive dashboard renders with charts
+- CSV export with Hebrew UTF-8 BOM works
+- Role-based RLS policies are written and will activate after migration 010
 
 ---
 
-## What Requires Supabase Connection
+## What Requires Migration Deployment
 
-The following have NOT been tested against a real database:
+The following will activate only after all 12 migrations are applied and admin user is created:
 
-- All 12 routes (untested at runtime)
-- Create/update mutations for all 6 entities
-- Trigger behavior (log_number auto-assign, resolved_at auto-set)
-- Unique constraint error handling (duplicate log toast)
-- Immutability trigger (preventing edit of sent-report logs)
-- Photo placeholder behavior for seed data
+- All 18 routes fetching live data
+- Role-based RLS (field_manager project isolation)
+- Admin login and session management
+- Auto-assigned log_number (trigger)
+- Duplicate log constraint enforcement
+- Immutability trigger (sent-report logs)
+- Management comments on tasks
 
 ---
 
@@ -59,11 +65,11 @@ The following have NOT been tested against a real database:
 
 | Category | Count |
 |---|---|
-| Route files | 12 |
-| Repository files | 6 |
-| Hook files | 6 |
-| Migration files | 4 |
-| Documentation files | 20+ |
+| Route files | 18 |
+| Repository files | 8 |
+| Hook files | 8 |
+| Migration files | 12 |
+| Documentation files | 30+ |
 | UI component files (shadcn/ui) | ~40 |
 
 ---

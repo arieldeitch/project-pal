@@ -1,6 +1,7 @@
 # Implementation Roadmap — Mehayesod Platform
 
 > Version 1.0 | 2026-06-14
+> **Status note (2026-06-15):** Phases 1–5 of this document were the original planning roadmap. The MVP implementation is now complete. The current priority is Supabase deployment (see `GO_LIVE_CHECKLIST.md`). Phase 2 scope — field reporting and PDF generation — is defined at the bottom of this document and in `docs/knowledge-base/13-reference-report-specifications.md`.
 
 ---
 
@@ -316,3 +317,92 @@ Prepare the system for real client use. Security, performance, observability, an
 | Hebrew RTL in PDF renders incorrectly | Medium | High | Test PDF template with real Hebrew content early in Phase 4 |
 | Field employee edits sent report through a bug | Low | High | Database trigger (GAP-H05) is the safety net |
 | Supabase Storage signed URLs expire during PDF generation | Low | Medium | Generate PDF synchronously or use service role key server-side |
+
+---
+
+## Phase 2 — Field Reporting and PDF Generation
+
+> **Gate:** Do not begin until MVP Supabase deployment is complete and verified. Requires explicit product owner approval.
+
+**Reference documents:** Two PDF samples provided by product owner (2026-06-15). Full field specifications in `docs/knowledge-base/13-reference-report-specifications.md`.
+
+### Phase 2 Objective
+
+Generate professional branded PDF reports matching the reference output samples provided by the product owner. Two report types are in scope:
+
+1. **Daily Work Log PDF (יומן עבודה)** — structured site activity record for clients and supervision
+2. **Engineering Response PDF (דוח תגובה הנדסי)** — professional response to inspection findings with cost estimates and standard references
+
+### Phase 2 New Entities
+
+| Entity | Purpose |
+|---|---|
+| `field_note` | Categorized observation within a daily log (supervision / safety / quality) |
+| `engineering_finding` | An inspection claim requiring a professional response |
+| `engineering_response` | Engineer's position on a specific finding |
+| `standard_reference` | Standard or regulation cited in response (embedded in response record) |
+| `cost_estimate` | Line-item cost table per finding (quantity, unit, price, VAT) |
+| `generated_pdf_report` | Storage pointer to generated PDF |
+| `signature` | Stored signature field (text or image) |
+
+### Phase 2 Data Model Additions
+
+Daily log extended with:
+- Date range (from–to) instead of single date
+- Formal role holder table (work manager, safety officer, others)
+- Work location per contractor row
+- Field notes with category
+
+New hierarchy for engineering reports:
+```
+project
+  └─ engineering_finding (many, per inspection report)
+       ├─ engineering_response (one)
+       ├─ cost_estimate (many line items)
+       └─ photo (many)
+```
+
+### Phase 2 Acceptance Criteria
+
+**Daily Work Log PDF:**
+- User generates branded A4 PDF from a daily log
+- PDF includes: general info, role holders, contractors, equipment, notes with photos, signature
+- PDF visually matches the reference daily work log document
+
+**Engineering Response PDF:**
+- User creates findings, enters responses, adds standard references, and enters cost estimates
+- Cost totals compute automatically (quantity × unit price + supervision % + VAT)
+- PDF includes all sections: client details, declaration, per-finding responses with photos, cost tables, summary, signature
+- PDF visually matches the reference engineering response document
+
+### Phase 2 Estimated Effort
+
+| Sub-phase | Description | Estimated Days |
+|---|---|---|
+| 2a | Photo storage (Supabase Storage bucket) | 2 |
+| 2b | Extended daily log + field notes + Daily Work Log PDF | 5 |
+| 2c | Engineering finding / response data model + UI | 5 |
+| 2d | Engineering Response PDF generation | 4 |
+| 2e | Testing and PDF layout refinement | 3 |
+| **Total** | | **~19 days** |
+
+### Phase 2 Dependencies
+
+- MVP deployment verified (all 49 smoke tests pass)
+- Product owner approval after reviewing smoke test results
+- Supabase Storage bucket created and RLS configured
+- PDF generation approach decided (client-side `@react-pdf/renderer` vs. server-side Edge Function)
+
+---
+
+## Phase 3 — Future (Not Yet Scoped)
+
+Not planned. Requires explicit product owner approval after Phase 2 is complete.
+
+Possible directions (not commitments):
+- Automated PDF delivery by email (Resend, SendGrid, or Supabase Edge Functions)
+- Weekly / monthly automated report aggregation
+- Advanced analytics / cross-project KPI trends
+- Mobile-first PWA
+- Multi-tenant company isolation layer
+- Notifications (missing log alerts, blocker escalation)

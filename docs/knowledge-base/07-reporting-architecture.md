@@ -60,23 +60,40 @@ The report detail page renders:
 
 ---
 
-## Future PDF Export (Phase 4)
+## Future PDF Export (Phase 2)
 
-The planned PDF generation approach:
-1. User clicks "Download PDF" on report detail page
-2. Frontend generates PDF client-side using a library like `@react-pdf/renderer`
-3. PDF renders the same content as the report detail page, formatted for print
-4. Download triggered via browser
+Phase 2 will add two branded PDF report types based on reference documents provided by the product owner. Full field specifications are in `docs/knowledge-base/13-reference-report-specifications.md`.
 
-Alternatively: Supabase Edge Function generates PDF server-side.
+**Approach:** Server-side generation via Supabase Edge Function (Puppeteer or managed PDF service). Client-side generation is not recommended for construction reports due to photo volume, Hebrew RTL rendering constraints, and mobile performance.
 
-**Not implemented yet.** The "Download PDF" button shows a placeholder toast.
+**Not implemented yet.** The current "Export CSV" button provides data export. The PDF button shows a placeholder.
 
 ---
 
 ## Report Types
 
-Currently only `daily` type is generated. `weekly` and `monthly` types are defined in the schema but not yet implemented in the UI or business logic.
+### Currently Implemented
+
+| Type | Source | Status |
+|---|---|---|
+| `daily` (web view) | Single DailyLog | ✅ Implemented — web render only |
+| `weekly` | Multiple DailyLogs | Schema defined, UI not implemented |
+| `monthly` | Multiple DailyLogs | Schema defined, UI not implemented |
+| CSV export | Report metadata | ✅ Implemented |
+
+### Phase 2 — Branded PDF Reports
+
+| Type | Hebrew Name | Purpose |
+|---|---|---|
+| Daily Work Log PDF | יומן עבודה | Structured daily site activity record for clients and supervision authority |
+| Engineering Response PDF | דוח תגובה הנדסי | Professional response to inspection findings with cost estimates and standard references |
+
+Both PDF types require:
+- Company logo in header
+- Branded footer with contact details and page numbers
+- A4 format, Hebrew RTL layout
+- Photo attachments embedded in document
+- Signature section at the end
 
 ---
 
