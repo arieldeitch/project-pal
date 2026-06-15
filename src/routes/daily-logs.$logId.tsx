@@ -3,8 +3,10 @@ import { ArrowRight, FileText, Download, Send, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, store } from "@/lib/mock-data";
 import { toast } from "sonner";
+import { useDailyLog } from "@/hooks/useDailyLogs";
+import { useProjects } from "@/hooks/useProjects";
+import { useGenerateReport } from "@/hooks/useReports";
 
 export const Route = createFileRoute("/daily-logs/$logId")({
   head: () => ({ meta: [{ title: "יומן - מהיסוד" }] }),
@@ -14,17 +16,27 @@ export const Route = createFileRoute("/daily-logs/$logId")({
 
 function DailyLogDetail() {
   const { logId } = Route.useParams();
-  const { dailyLogs, projects } = useStore();
+  const { data: log, isLoading } = useDailyLog(logId);
+  const { data: projects = [] } = useProjects();
+  const generateReport = useGenerateReport();
   const navigate = useNavigate();
-  const log = dailyLogs.find((l) => l.id === logId);
+
+  if (isLoading) return <div className="py-12 text-center text-muted-foreground">טוען...</div>;
   if (!log) throw notFound();
+
   const project = projects.find((p) => p.id === log.projectId);
 
-  const generate = () => {
-    const r = store.generateReportFromLog(log.id);
-    if (r) {
+  const generate = async () => {
+    try {
+      const report = await generateReport.mutateAsync({
+        logId: log.id,
+        projectId: log.projectId,
+        date: log.date,
+      });
       toast.success("דוח נוצר");
-      navigate({ to: "/reports/$reportId", params: { reportId: r.id } });
+      navigate({ to: "/reports/$reportId", params: { reportId: report.id } });
+    } catch {
+      toast.error("שגיאה ביצירת הדוח");
     }
   };
 
@@ -40,7 +52,9 @@ function DailyLogDetail() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline"><Pencil className="ml-2 h-4 w-4" />עריכה</Button>
-          <Button onClick={generate}><FileText className="ml-2 h-4 w-4" />צור דוח</Button>
+          <Button onClick={generate} disabled={generateReport.isPending}>
+            <FileText className="ml-2 h-4 w-4" />צור דוח
+          </Button>
           <Button variant="outline" onClick={() => toast.info("ייצוא PDF - בפיתוח")}><Download className="ml-2 h-4 w-4" />PDF</Button>
           <Button variant="outline" onClick={() => toast.info("נשלח ללקוח (דמה)")}><Send className="ml-2 h-4 w-4" />שליחה ללקוח</Button>
         </div>
@@ -67,6 +81,7 @@ function DailyLogDetail() {
               {log.contractors.map((c) => (
                 <TableRow key={c.id}><TableCell>{c.contractor}</TableCell><TableCell>{c.trade}</TableCell><TableCell>{c.workers}</TableCell><TableCell className="text-muted-foreground">{c.notes}</TableCell></TableRow>
               ))}
+              {log.contractors.length === 0 && <TableRow><TableCell colSpan={4} className="py-4 text-center text-muted-foreground">אין קבלנים</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
@@ -81,6 +96,7 @@ function DailyLogDetail() {
               {log.equipment.map((e) => (
                 <TableRow key={e.id}><TableCell>{e.name}</TableCell><TableCell>{e.quantity}</TableCell><TableCell className="text-muted-foreground">{e.notes}</TableCell></TableRow>
               ))}
+              {log.equipment.length === 0 && <TableRow><TableCell colSpan={3} className="py-4 text-center text-muted-foreground">אין ציוד</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
@@ -92,6 +108,7 @@ function DailyLogDetail() {
           <ol className="list-decimal space-y-1 pr-5 text-sm">
             {log.workDescription.map((w, i) => <li key={i}>{w}</li>)}
           </ol>
+          {log.workDescription.length === 0 && <p className="text-sm text-muted-foreground">אין תיאור עבודה</p>}
         </CardContent>
       </Card>
 

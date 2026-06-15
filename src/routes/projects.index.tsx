@@ -1,8 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, lastLogDate } from "@/lib/mock-data";
+import { lastLogDate } from "@/lib/mock-data";
 import { ProjectStatusBadge } from "@/components/StatusBadges";
+import { useProjects } from "@/hooks/useProjects";
+import { useDailyLogs } from "@/hooks/useDailyLogs";
+import { useIssues } from "@/hooks/useIssues";
+import { useBlockers } from "@/hooks/useBlockers";
 
 export const Route = createFileRoute("/projects/")({
   head: () => ({ meta: [{ title: "פרויקטים - מהיסוד" }] }),
@@ -10,9 +14,15 @@ export const Route = createFileRoute("/projects/")({
 });
 
 function ProjectsList() {
-  const { projects, dailyLogs, issues, blockers } = useStore();
-  const openIssues = (pid: string) => issues.filter((i) => i.projectId === pid && i.status !== "closed" && i.status !== "resolved").length;
-  const openBlockers = (pid: string) => blockers.filter((b) => b.projectId === pid && b.status !== "resolved").length;
+  const { data: projects = [] } = useProjects();
+  const { data: dailyLogs = [] } = useDailyLogs();
+  const { data: issues = [] } = useIssues();
+  const { data: blockers = [] } = useBlockers();
+
+  const openIssues = (pid: string) =>
+    issues.filter((i) => i.projectId === pid && i.status !== "closed" && i.status !== "resolved").length;
+  const openBlockers = (pid: string) =>
+    blockers.filter((b) => b.projectId === pid && b.status !== "resolved").length;
 
   return (
     <div className="space-y-6">
@@ -52,6 +62,9 @@ function ProjectsList() {
                   <TableCell>{openBlockers(p.id)}</TableCell>
                 </TableRow>
               ))}
+              {projects.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">אין פרויקטים</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

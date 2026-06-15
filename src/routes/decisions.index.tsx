@@ -8,10 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, store, type DecisionStatus } from "@/lib/mock-data";
+import type { DecisionStatus, Decision } from "@/lib/mock-data";
 import { DecisionStatusBadge } from "@/components/StatusBadges";
 import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useDecisions, useCreateDecision, useUpdateDecision } from "@/hooks/useDecisions";
+import { useProjects } from "@/hooks/useProjects";
 
 export const Route = createFileRoute("/decisions/")({
   head: () => ({ meta: [{ title: "החלטות - מהיסוד" }] }),
@@ -19,7 +21,8 @@ export const Route = createFileRoute("/decisions/")({
 });
 
 function DecisionsPage() {
-  const { decisions, projects } = useStore();
+  const { data: decisions = [] } = useDecisions();
+  const { data: projects = [] } = useProjects();
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
 
   return (
@@ -54,6 +57,9 @@ function DecisionsPage() {
                   <TableCell><DecisionDialog decision={d} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} /></TableCell>
                 </TableRow>
               ))}
+              {decisions.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">אין החלטות</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -62,8 +68,10 @@ function DecisionsPage() {
   );
 }
 
-function DecisionDialog({ trigger, decision }: { trigger: React.ReactNode; decision?: ReturnType<typeof useStore>["decisions"][number] }) {
-  const { projects } = useStore();
+function DecisionDialog({ trigger, decision }: { trigger: React.ReactNode; decision?: Decision }) {
+  const { data: projects = [] } = useProjects();
+  const createDecision = useCreateDecision();
+  const updateDecision = useUpdateDecision();
   const [open, setOpen] = useState(false);
   const [projectId, setProjectId] = useState(decision?.projectId ?? projects[0]?.id ?? "");
   const [title, setTitle] = useState(decision?.title ?? "");
@@ -75,10 +83,21 @@ function DecisionDialog({ trigger, decision }: { trigger: React.ReactNode; decis
 
   const submit = () => {
     if (!title.trim()) return toast.error("יש להזין נושא");
-    if (decision) { store.updateDecision(decision.id, { projectId, title, description, requestedBy, owner, dueDate, status }); toast.success("עודכן"); }
-    else { store.addDecision({ projectId, title, description, requestedBy, owner, dueDate, status }); toast.success("נוצר"); }
-    setOpen(false);
+    const data = { projectId, title, description, requestedBy, owner, dueDate, status };
+    if (decision) {
+      updateDecision.mutate(
+        { id: decision.id, data },
+        { onSuccess: () => { toast.success("עודכן"); setOpen(false); }, onError: () => toast.error("שגיאה") }
+      );
+    } else {
+      createDecision.mutate(data, {
+        onSuccess: () => { toast.success("נוצר"); setOpen(false); },
+        onError: () => toast.error("שגיאה"),
+      });
+    }
   };
+
+  const isPending = createDecision.isPending || updateDecision.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -107,7 +126,10 @@ function DecisionDialog({ trigger, decision }: { trigger: React.ReactNode; decis
             </Select>
           </div>
         </div>
-        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button onClick={submit}>שמירה</Button></DialogFooter>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button>
+          <Button onClick={submit} disabled={isPending}>{isPending ? "שומר..." : "שמירה"}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

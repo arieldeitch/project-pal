@@ -1,20 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, hasLogToday, severityLabel, blockerStatusLabel, issueStatusLabel } from "@/lib/mock-data";
+import { hasLogToday, severityLabel, blockerStatusLabel, issueStatusLabel } from "@/lib/mock-data";
 import { ProjectStatusBadge, SeverityBadge, BlockerStatusBadge, IssueStatusBadge, DecisionStatusBadge, ReportStatusBadge } from "@/components/StatusBadges";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { FolderKanban, ClipboardList, FileWarning, AlertTriangle, AlertOctagon, Ban, GitBranch, Send } from "lucide-react";
+import { useProjects } from "@/hooks/useProjects";
+import { useDailyLogs } from "@/hooks/useDailyLogs";
+import { useIssues } from "@/hooks/useIssues";
+import { useBlockers } from "@/hooks/useBlockers";
+import { useDecisions } from "@/hooks/useDecisions";
+import { useReports } from "@/hooks/useReports";
 
 export const Route = createFileRoute("/executive")({
   head: () => ({ meta: [{ title: "דשבורד הנהלה - מהיסוד" }] }),
   component: Executive,
 });
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 const PALETTE = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"];
 
-function Stat({ title, value, icon: Icon, tone }: { title: string; value: number; icon: any; tone: string }) {
+function Stat({ title, value, icon: Icon, tone }: { title: string; value: number; icon: React.ComponentType<{ className?: string }>; tone: string }) {
   return (
     <Card>
       <CardContent className="flex items-center justify-between p-4">
@@ -26,7 +31,13 @@ function Stat({ title, value, icon: Icon, tone }: { title: string; value: number
 }
 
 function Executive() {
-  const { projects, dailyLogs, issues, blockers, decisions, reports } = useStore();
+  const { data: projects = [] } = useProjects();
+  const { data: dailyLogs = [] } = useDailyLogs();
+  const { data: issues = [] } = useIssues();
+  const { data: blockers = [] } = useBlockers();
+  const { data: decisions = [] } = useDecisions();
+  const { data: reports = [] } = useReports();
+
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); })();
 
@@ -179,6 +190,7 @@ function Executive() {
               {[...reports].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map((r) => (
                 <TableRow key={r.id}><TableCell><Link to="/reports/$reportId" params={{ reportId: r.id }} className="hover:underline">{r.date}</Link></TableCell><TableCell>{projectName(r.projectId)}</TableCell><TableCell><ReportStatusBadge status={r.status} /></TableCell></TableRow>
               ))}
+              {reports.length === 0 && <TableRow><TableCell colSpan={3} className="py-6 text-center text-muted-foreground">אין דוחות</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

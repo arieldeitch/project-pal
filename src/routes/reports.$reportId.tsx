@@ -3,9 +3,10 @@ import { ArrowRight, Download, Send, FileSpreadsheet, HardHat } from "lucide-rea
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, store, reportTypeLabel } from "@/lib/mock-data";
+import { reportTypeLabel } from "@/lib/mock-data";
 import { ReportStatusBadge } from "@/components/StatusBadges";
 import { toast } from "sonner";
+import { useReportDetail, useMarkReportSent } from "@/hooks/useReports";
 
 export const Route = createFileRoute("/reports/$reportId")({
   head: () => ({ meta: [{ title: "דוח - מהיסוד" }] }),
@@ -15,11 +16,13 @@ export const Route = createFileRoute("/reports/$reportId")({
 
 function ReportDetail() {
   const { reportId } = Route.useParams();
-  const { reports, dailyLogs, projects } = useStore();
-  const report = reports.find((r) => r.id === reportId);
-  if (!report) throw notFound();
-  const log = dailyLogs.find((l) => l.id === report.dailyLogId);
-  const project = projects.find((p) => p.id === report.projectId);
+  const { data, isLoading } = useReportDetail(reportId);
+  const markSent = useMarkReportSent();
+
+  if (isLoading) return <div className="py-12 text-center text-muted-foreground">טוען...</div>;
+  if (!data) throw notFound();
+
+  const { report, log, project } = data;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -32,7 +35,17 @@ function ReportDetail() {
           <Button variant="outline" onClick={() => toast.info("ייצוא PDF - בפיתוח")}><Download className="ml-2 h-4 w-4" />PDF</Button>
           <Button variant="outline" onClick={() => toast.info("ייצוא Excel - בפיתוח")}><FileSpreadsheet className="ml-2 h-4 w-4" />Excel</Button>
           {report.status !== "sent" && (
-            <Button onClick={() => { store.markReportSent(report.id); toast.success("הדוח סומן כנשלח"); }}><Send className="ml-2 h-4 w-4" />סמן כנשלח</Button>
+            <Button
+              disabled={markSent.isPending}
+              onClick={() =>
+                markSent.mutate(report.id, {
+                  onSuccess: () => toast.success("הדוח סומן כנשלח"),
+                  onError: () => toast.error("שגיאה"),
+                })
+              }
+            >
+              <Send className="ml-2 h-4 w-4" />סמן כנשלח
+            </Button>
           )}
         </div>
       </div>

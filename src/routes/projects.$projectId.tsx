@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, hasLogToday, lastLogDate } from "@/lib/mock-data";
+import { hasLogToday, lastLogDate } from "@/lib/mock-data";
 import {
   ProjectStatusBadge,
   IssueStatusBadge,
@@ -13,6 +13,12 @@ import {
   DecisionStatusBadge,
   ReportStatusBadge,
 } from "@/components/StatusBadges";
+import { useProject } from "@/hooks/useProjects";
+import { useDailyLogs } from "@/hooks/useDailyLogs";
+import { useIssues } from "@/hooks/useIssues";
+import { useBlockers } from "@/hooks/useBlockers";
+import { useDecisions } from "@/hooks/useDecisions";
+import { useReports } from "@/hooks/useReports";
 
 export const Route = createFileRoute("/projects/$projectId")({
   head: () => ({ meta: [{ title: "פרויקט - מהיסוד" }] }),
@@ -22,19 +28,21 @@ export const Route = createFileRoute("/projects/$projectId")({
 
 function ProjectDetail() {
   const { projectId } = Route.useParams();
-  const { projects, dailyLogs, issues, blockers, decisions, reports } = useStore();
-  const project = projects.find((p) => p.id === projectId);
+  const { data: project, isLoading } = useProject(projectId);
+  const { data: dailyLogs = [] } = useDailyLogs({ projectId });
+  const { data: issues = [] } = useIssues({ projectId });
+  const { data: blockers = [] } = useBlockers({ projectId });
+  const { data: decisions = [] } = useDecisions({ projectId });
+  const { data: reports = [] } = useReports({ projectId });
+
+  if (isLoading) return <div className="py-12 text-center text-muted-foreground">טוען...</div>;
   if (!project) throw notFound();
 
-  const pLogs = dailyLogs.filter((l) => l.projectId === projectId).sort((a, b) => b.date.localeCompare(a.date));
-  const pIssues = issues.filter((i) => i.projectId === projectId);
-  const pBlockers = blockers.filter((b) => b.projectId === projectId);
-  const pDecisions = decisions.filter((d) => d.projectId === projectId);
-  const pReports = reports.filter((r) => r.projectId === projectId);
+  const pLogs = [...dailyLogs].sort((a, b) => b.date.localeCompare(a.date));
   const latestLog = pLogs[0];
-  const openBlockers = pBlockers.filter((b) => b.status !== "resolved");
-  const openIssues = pIssues.filter((i) => i.status !== "closed" && i.status !== "resolved");
-  const pendingDec = pDecisions.filter((d) => d.status === "pending");
+  const openBlockers = blockers.filter((b) => b.status !== "resolved");
+  const openIssues = issues.filter((i) => i.status !== "closed" && i.status !== "resolved");
+  const pendingDec = decisions.filter((d) => d.status === "pending");
   const missing = !hasLogToday(projectId, dailyLogs);
 
   return (
@@ -52,7 +60,7 @@ function ProjectDetail() {
         <div className="flex items-center gap-2">
           <ProjectStatusBadge status={project.status} />
           <Button asChild>
-            <Link to="/daily-logs/new" search={{ projectId } as any}>➕ יומן חדש</Link>
+            <Link to="/daily-logs/new" search={{ projectId } as never}>➕ יומן חדש</Link>
           </Button>
         </div>
       </div>
@@ -72,7 +80,7 @@ function ProjectDetail() {
               <p className="font-semibold text-destructive">אין יומן עבודה לתאריך היום</p>
               <p className="text-sm text-muted-foreground">יש להגיש יומן ביצוע יומי לפרויקט.</p>
             </div>
-            <Button className="ms-auto" asChild><Link to="/daily-logs/new" search={{ projectId } as any}>הגש יומן</Link></Button>
+            <Button className="ms-auto" asChild><Link to="/daily-logs/new" search={{ projectId } as never}>הגש יומן</Link></Button>
           </CardContent>
         </Card>
       )}
@@ -81,10 +89,10 @@ function ProjectDetail() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">סקירה</TabsTrigger>
           <TabsTrigger value="logs"><ClipboardList className="ml-2 h-4 w-4" />יומנים ({pLogs.length})</TabsTrigger>
-          <TabsTrigger value="issues"><AlertTriangle className="ml-2 h-4 w-4" />ליקויים ({pIssues.length})</TabsTrigger>
-          <TabsTrigger value="blockers"><Ban className="ml-2 h-4 w-4" />חסמים ({pBlockers.length})</TabsTrigger>
-          <TabsTrigger value="decisions"><GitBranch className="ml-2 h-4 w-4" />החלטות ({pDecisions.length})</TabsTrigger>
-          <TabsTrigger value="reports"><FileText className="ml-2 h-4 w-4" />דוחות ({pReports.length})</TabsTrigger>
+          <TabsTrigger value="issues"><AlertTriangle className="ml-2 h-4 w-4" />ליקויים ({issues.length})</TabsTrigger>
+          <TabsTrigger value="blockers"><Ban className="ml-2 h-4 w-4" />חסמים ({blockers.length})</TabsTrigger>
+          <TabsTrigger value="decisions"><GitBranch className="ml-2 h-4 w-4" />החלטות ({decisions.length})</TabsTrigger>
+          <TabsTrigger value="reports"><FileText className="ml-2 h-4 w-4" />דוחות ({reports.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -161,17 +169,14 @@ function ProjectDetail() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>יומני עבודה</CardTitle>
-              <Button size="sm" asChild><Link to="/daily-logs/new" search={{ projectId } as any}><Plus className="ml-2 h-4 w-4" />יומן חדש</Link></Button>
+              <Button size="sm" asChild><Link to="/daily-logs/new" search={{ projectId } as never}><Plus className="ml-2 h-4 w-4" />יומן חדש</Link></Button>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>תאריך</TableHead>
-                    <TableHead>שעות</TableHead>
-                    <TableHead>מזג אוויר</TableHead>
-                    <TableHead>הוגש ע״י</TableHead>
-                    <TableHead>אירועים חריגים</TableHead>
+                    <TableHead>תאריך</TableHead><TableHead>שעות</TableHead><TableHead>מזג אוויר</TableHead>
+                    <TableHead>הוגש ע״י</TableHead><TableHead>אירועים חריגים</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -192,21 +197,21 @@ function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="issues">
-          <SimpleList rows={pIssues.map((i) => ({
+          <SimpleList rows={issues.map((i) => ({
             id: i.id, title: i.title, sub: `${i.location} · ${i.responsibleContractor}`,
             right: <div className="flex gap-1"><SeverityBadge severity={i.severity} /><IssueStatusBadge status={i.status} /></div>
           }))} empty="אין ליקויים" />
         </TabsContent>
 
         <TabsContent value="blockers">
-          <SimpleList rows={pBlockers.map((b) => ({
+          <SimpleList rows={blockers.map((b) => ({
             id: b.id, title: b.title, sub: b.impact,
             right: <div className="flex gap-1"><SeverityBadge severity={b.priority} /><BlockerStatusBadge status={b.status} /></div>
           }))} empty="אין חסמים" />
         </TabsContent>
 
         <TabsContent value="decisions">
-          <SimpleList rows={pDecisions.map((d) => ({
+          <SimpleList rows={decisions.map((d) => ({
             id: d.id, title: d.title, sub: `נדרש: ${d.requestedBy} · החלטה: ${d.owner}`,
             right: <DecisionStatusBadge status={d.status} />
           }))} empty="אין החלטות" />
@@ -220,7 +225,7 @@ function ProjectDetail() {
                   <TableRow><TableHead>תאריך</TableHead><TableHead>סוג</TableHead><TableHead>סטטוס</TableHead><TableHead></TableHead></TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pReports.map((r) => (
+                  {reports.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell>{r.date}</TableCell>
                       <TableCell>{r.type}</TableCell>
@@ -228,7 +233,7 @@ function ProjectDetail() {
                       <TableCell><Button size="sm" variant="outline" asChild><Link to="/reports/$reportId" params={{ reportId: r.id }}>צפייה</Link></Button></TableCell>
                     </TableRow>
                   ))}
-                  {pReports.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">אין דוחות</TableCell></TableRow>}
+                  {reports.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">אין דוחות</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>

@@ -3,15 +3,20 @@ import { ClipboardList, AlertTriangle, Ban, GitBranch, FolderKanban, FileWarning
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { useStore, hasLogToday, lastLogDate } from "@/lib/mock-data";
+import { hasLogToday, lastLogDate } from "@/lib/mock-data";
 import { ProjectStatusBadge, IssueStatusBadge, BlockerStatusBadge, SeverityBadge } from "@/components/StatusBadges";
+import { useProjects } from "@/hooks/useProjects";
+import { useDailyLogs } from "@/hooks/useDailyLogs";
+import { useIssues } from "@/hooks/useIssues";
+import { useBlockers } from "@/hooks/useBlockers";
+import { useDecisions } from "@/hooks/useDecisions";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "דשבורד תפעולי - מהיסוד" }] }),
   component: Dashboard,
 });
 
-function StatCard({ title, value, icon: Icon, tone, hint }: { title: string; value: number; icon: any; tone: string; hint?: string }) {
+function StatCard({ title, value, icon: Icon, tone, hint }: { title: string; value: number; icon: React.ComponentType<{ className?: string }>; tone: string; hint?: string }) {
   return (
     <Card>
       <CardContent className="flex items-center justify-between p-5">
@@ -29,7 +34,12 @@ function StatCard({ title, value, icon: Icon, tone, hint }: { title: string; val
 }
 
 function Dashboard() {
-  const { projects, dailyLogs, issues, blockers, decisions } = useStore();
+  const { data: projects = [] } = useProjects();
+  const { data: dailyLogs = [] } = useDailyLogs();
+  const { data: issues = [] } = useIssues();
+  const { data: blockers = [] } = useBlockers();
+  const { data: decisions = [] } = useDecisions();
+
   const today = new Date().toISOString().slice(0, 10);
   const activeProjects = projects.filter((p) => p.status === "active");
   const logsToday = dailyLogs.filter((l) => l.date === today);
@@ -87,6 +97,9 @@ function Dashboard() {
                     <TableCell className="text-muted-foreground">{l.workHours}</TableCell>
                   </TableRow>
                 ))}
+                {recentLogs.length === 0 && (
+                  <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">אין יומנים</TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -154,6 +167,10 @@ function Dashboard() {
                   <TableCell><BlockerStatusBadge status={b.status} /></TableCell>
                 </TableRow>
               ))}
+              {issues.filter((i) => i.severity === "critical" && i.status !== "closed").length === 0 &&
+               blockers.filter((b) => b.priority === "critical" && b.status !== "resolved").length === 0 && (
+                <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">אין פריטים קריטיים</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

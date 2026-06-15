@@ -1,16 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useStore, store, type IssueStatus, type Severity } from "@/lib/mock-data";
+import type { IssueStatus, Severity, Issue } from "@/lib/mock-data";
 import { IssueStatusBadge, SeverityBadge } from "@/components/StatusBadges";
 import { MessageSquare, MapPin, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useIssues, useCreateIssue, useUpdateIssue } from "@/hooks/useIssues";
+import { useProjects } from "@/hooks/useProjects";
 
 export const Route = createFileRoute("/issues/")({
   head: () => ({ meta: [{ title: "ליקויים - מהיסוד" }] }),
@@ -18,14 +20,24 @@ export const Route = createFileRoute("/issues/")({
 });
 
 function IssuesPage() {
-  const { issues, projects } = useStore();
+  const { data: issues = [] } = useIssues();
+  const { data: projects = [] } = useProjects();
+  const updateIssue = useUpdateIssue();
   const [filter, setFilter] = useState<"all" | "open" | "critical">("all");
+
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
   const filtered = issues.filter((i) => {
     if (filter === "open") return i.status !== "closed" && i.status !== "resolved";
     if (filter === "critical") return i.severity === "critical";
     return true;
   });
+
+  const toggleResolve = (i: Issue) => {
+    updateIssue.mutate(
+      { id: i.id, data: { status: i.status === "resolved" ? "reopened" : "resolved" } },
+      { onSuccess: () => toast.success("עודכן"), onError: () => toast.error("שגיאה בעדכון") }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -63,7 +75,7 @@ function IssuesPage() {
               <div className="flex items-center justify-between border-t pt-2">
                 <IssueStatusBadge status={i.status} />
                 <div className="flex gap-1">
-                  <Button size="sm" variant="outline" onClick={() => { store.updateIssue(i.id, { status: i.status === "resolved" ? "reopened" : "resolved" }); toast.success("עודכן"); }}>
+                  <Button size="sm" variant="outline" onClick={() => toggleResolve(i)} disabled={updateIssue.isPending}>
                     {i.status === "resolved" ? "פתח מחדש" : "סמן כטופל"}
                   </Button>
                   <IssueDialog issue={i} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
@@ -73,13 +85,18 @@ function IssuesPage() {
             </CardContent>
           </Card>
         ))}
+        {filtered.length === 0 && (
+          <div className="col-span-3 py-12 text-center text-muted-foreground">אין ליקויים</div>
+        )}
       </div>
     </div>
   );
 }
 
-function IssueDialog({ trigger, issue }: { trigger: React.ReactNode; issue?: ReturnType<typeof useStore>["issues"][number] }) {
-  const { projects } = useStore();
+function IssueDialog({ trigger, issue }: { trigger: React.ReactNode; issue?: Issue }) {
+  const { data: projects = [] } = useProjects();
+  const createIssue = useCreateIssue();
+  const updateIssue = useUpdateIssue();
   const [open, setOpen] = useState(false);
   const [projectId, setProjectId] = useState(issue?.projectId ?? projects[0]?.id ?? "");
   const [title, setTitle] = useState(issue?.title ?? "");
@@ -93,15 +110,21 @@ function IssueDialog({ trigger, issue }: { trigger: React.ReactNode; issue?: Ret
 
   const submit = () => {
     if (!title.trim()) return toast.error("יש להזין כותרת");
+    const data = { projectId, title, description, location, responsibleContractor, assignedTo, dueDate, severity, status };
     if (issue) {
-      store.updateIssue(issue.id, { projectId, title, description, location, responsibleContractor, assignedTo, dueDate, severity, status });
-      toast.success("עודכן");
+      updateIssue.mutate(
+        { id: issue.id, data },
+        { onSuccess: () => { toast.success("עודכן"); setOpen(false); }, onError: () => toast.error("שגיאה") }
+      );
     } else {
-      store.addIssue({ projectId, title, description, location, responsibleContractor, assignedTo, dueDate, severity, status });
-      toast.success("נוצר");
+      createIssue.mutate(data, {
+        onSuccess: () => { toast.success("נוצר"); setOpen(false); },
+        onError: () => toast.error("שגיאה"),
+      });
     }
-    setOpen(false);
   };
+
+  const isPending = createIssue.isPending || updateIssue.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -146,7 +169,7 @@ function IssueDialog({ trigger, issue }: { trigger: React.ReactNode; issue?: Ret
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button>
-          <Button onClick={submit}>שמירה</Button>
+          <Button onClick={submit} disabled={isPending}>{isPending ? "שומר..." : "שמירה"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

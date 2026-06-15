@@ -3,8 +3,9 @@ import { Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
+import { useDailyLogs } from "@/hooks/useDailyLogs";
+import { useProjects } from "@/hooks/useProjects";
 
 export const Route = createFileRoute("/daily-logs/")({
   head: () => ({ meta: [{ title: "יומני עבודה - מהיסוד" }] }),
@@ -12,10 +13,11 @@ export const Route = createFileRoute("/daily-logs/")({
 });
 
 function DailyLogsList() {
-  const { dailyLogs, projects } = useStore();
+  const { data: dailyLogs = [], isLoading } = useDailyLogs();
+  const { data: projects = [] } = useProjects();
+
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
   const today = new Date().toISOString().slice(0, 10);
-  const sorted = [...dailyLogs].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="space-y-6">
@@ -28,7 +30,7 @@ function DailyLogsList() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>{dailyLogs.length} יומנים</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{isLoading ? "טוען..." : `${dailyLogs.length} יומנים`}</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -44,7 +46,7 @@ function DailyLogsList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map((l) => (
+              {dailyLogs.map((l) => (
                 <TableRow key={l.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -61,6 +63,9 @@ function DailyLogsList() {
                   <TableCell><Button size="sm" variant="outline" asChild><Link to="/daily-logs/$logId" params={{ logId: l.id }}>צפייה</Link></Button></TableCell>
                 </TableRow>
               ))}
+              {!isLoading && dailyLogs.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">אין יומנים</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

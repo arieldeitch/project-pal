@@ -2,10 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, store, reportTypeLabel } from "@/lib/mock-data";
+import { reportTypeLabel } from "@/lib/mock-data";
 import { ReportStatusBadge } from "@/components/StatusBadges";
 import { Download, Send, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
+import { useReports, useMarkReportSent } from "@/hooks/useReports";
+import { useProjects } from "@/hooks/useProjects";
 
 export const Route = createFileRoute("/reports/")({
   head: () => ({ meta: [{ title: "דוחות - מהיסוד" }] }),
@@ -13,7 +15,10 @@ export const Route = createFileRoute("/reports/")({
 });
 
 function ReportsList() {
-  const { reports, projects } = useStore();
+  const { data: reports = [] } = useReports();
+  const { data: projects = [] } = useProjects();
+  const markSent = useMarkReportSent();
+
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
   const sorted = [...reports].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -47,12 +52,27 @@ function ReportsList() {
                       <Button size="icon" variant="ghost" asChild><Link to="/reports/$reportId" params={{ reportId: r.id }}><Download className="h-4 w-4" /></Link></Button>
                       <Button size="icon" variant="ghost" onClick={() => toast.info("ייצוא Excel - בפיתוח")}><FileSpreadsheet className="h-4 w-4" /></Button>
                       {r.status !== "sent" && (
-                        <Button size="icon" variant="ghost" onClick={() => { store.markReportSent(r.id); toast.success("הדוח סומן כנשלח"); }}><Send className="h-4 w-4" /></Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          disabled={markSent.isPending}
+                          onClick={() =>
+                            markSent.mutate(r.id, {
+                              onSuccess: () => toast.success("הדוח סומן כנשלח"),
+                              onError: () => toast.error("שגיאה"),
+                            })
+                          }
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
+              {sorted.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">אין דוחות</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

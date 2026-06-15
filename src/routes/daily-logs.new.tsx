@@ -1,15 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useStore, store, type ContractorRow, type EquipmentRow, type PhotoItem } from "@/lib/mock-data";
+import type { ContractorRow, EquipmentRow } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useProjects } from "@/hooks/useProjects";
+import { useCreateDailyLog } from "@/hooks/useDailyLogs";
 
 export const Route = createFileRoute("/daily-logs/new")({
   head: () => ({ meta: [{ title: "יומן חדש - מהיסוד" }] }),
@@ -18,15 +20,10 @@ export const Route = createFileRoute("/daily-logs/new")({
 });
 
 const uid = () => Math.random().toString(36).slice(2, 10);
-const sampleImages = [
-  "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=70",
-  "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=800&q=70",
-  "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=800&q=70",
-  "https://images.unsplash.com/photo-1590725140246-20acdee442be?auto=format&fit=crop&w=800&q=70",
-];
 
 function NewDailyLog() {
-  const { projects } = useStore();
+  const { data: projects = [] } = useProjects();
+  const createLog = useCreateDailyLog();
   const navigate = useNavigate();
   const search = Route.useSearch();
 
@@ -44,21 +41,37 @@ function NewDailyLog() {
     { id: uid(), name: "", quantity: 1, notes: "" },
   ]);
   const [workDescription, setWorkDescription] = useState<string[]>([""]);
-  const [photos, setPhotos] = useState<PhotoItem[]>([]);
 
-  const submit = () => {
+  const submit = async () => {
     if (!projectId) return toast.error("יש לבחור פרויקט");
     if (!submittedBy.trim()) return toast.error("יש למלא מגיש");
-    const log = store.addDailyLog({
-      projectId, date, workHours, weather, submittedBy,
-      exceptionalEvents, contractorNotes,
-      contractors: contractors.filter((c) => c.contractor.trim()),
-      equipment: equipment.filter((e) => e.name.trim()),
-      workDescription: workDescription.filter((w) => w.trim()),
-      photos,
-    });
-    toast.success("היומן נשמר");
-    navigate({ to: "/daily-logs/$logId", params: { logId: log.id } });
+    try {
+      const log = await createLog.mutateAsync({
+        projectId,
+        date,
+        workHours,
+        weather,
+        submittedBy,
+        exceptionalEvents,
+        contractorNotes,
+        contractors: contractors
+          .filter((c) => c.contractor.trim())
+          .map(({ contractor, trade, workers, notes }) => ({ contractor, trade, workers, notes })),
+        equipment: equipment
+          .filter((e) => e.name.trim())
+          .map(({ name, quantity, notes }) => ({ name, quantity, notes })),
+        workDescription: workDescription.filter((w) => w.trim()),
+      });
+      toast.success("היומן נשמר");
+      navigate({ to: "/daily-logs/$logId", params: { logId: log.id } });
+    } catch (error: unknown) {
+      const err = error as { code?: string };
+      if (err?.code === "23505") {
+        toast.error("כבר קיים יומן לתאריך זה בפרויקט זה");
+      } else {
+        toast.error("שגיאה בשמירת היומן");
+      }
+    }
   };
 
   return (
@@ -103,7 +116,7 @@ function NewDailyLog() {
           {contractors.map((c, i) => (
             <div key={c.id} className="grid items-end gap-2 md:grid-cols-12">
               <div className="md:col-span-3"><Label>קבלן</Label><Input value={c.contractor} onChange={(e) => setContractors(contractors.map((x, j) => j === i ? { ...x, contractor: e.target.value } : x))} /></div>
-              <div className="md:col-span-3"><Label>מקצוע</Label><Input value={c.trade} onChange={(e) => setContractors(contractors.map((x, j) => j === i ? { ...x, trade: e.target.value } : x))} placeholder="שלד / חשמל / צמ״ה" /></div>
+              <div className="md:col-span-3"><Label>מקצוע</Label><Input value={c.trade} onChange={(e) => setContractors(contractors.map((x, j) => j === i ? { ...x, trade: e.target.value } : x))} placeholder='שלד / חשמל / צמ"ה' /></div>
               <div className="md:col-span-2"><Label>מס׳ עובדים</Label><Input type="number" value={c.workers} onChange={(e) => setContractors(contractors.map((x, j) => j === i ? { ...x, workers: +e.target.value } : x))} /></div>
               <div className="md:col-span-3"><Label>הערות</Label><Input value={c.notes} onChange={(e) => setContractors(contractors.map((x, j) => j === i ? { ...x, notes: e.target.value } : x))} /></div>
               <Button size="icon" variant="ghost" onClick={() => setContractors(contractors.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -152,32 +165,11 @@ function NewDailyLog() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>תמונות מהשטח</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setPhotos([...photos, { id: uid(), url: sampleImages[photos.length % sampleImages.length], caption: "", workItem: "", area: "" }])}>
-            <ImageIcon className="ml-2 h-4 w-4" />הוסף תמונה
-          </Button>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          {photos.map((p, i) => (
-            <div key={p.id} className="space-y-2 rounded-lg border p-3">
-              <img src={p.url} alt="" className="h-40 w-full rounded object-cover" />
-              <Input placeholder="כיתוב" value={p.caption} onChange={(e) => setPhotos(photos.map((x, j) => j === i ? { ...x, caption: e.target.value } : x))} />
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="אזור" value={p.area} onChange={(e) => setPhotos(photos.map((x, j) => j === i ? { ...x, area: e.target.value } : x))} />
-                <Input placeholder="סעיף עבודה" value={p.workItem} onChange={(e) => setPhotos(photos.map((x, j) => j === i ? { ...x, workItem: e.target.value } : x))} />
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setPhotos(photos.filter((_, j) => j !== i))}><Trash2 className="ml-2 h-4 w-4 text-destructive" />הסר</Button>
-            </div>
-          ))}
-          {photos.length === 0 && <p className="col-span-2 text-center text-sm text-muted-foreground">לא נוספו תמונות</p>}
-        </CardContent>
-      </Card>
-
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => navigate({ to: "/daily-logs" })}>ביטול</Button>
-        <Button onClick={submit}>שמור יומן</Button>
+        <Button onClick={submit} disabled={createLog.isPending}>
+          {createLog.isPending ? "שומר..." : "שמור יומן"}
+        </Button>
       </div>
     </div>
   );

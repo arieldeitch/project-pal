@@ -8,10 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStore, store, type BlockerStatus, type Severity } from "@/lib/mock-data";
+import type { BlockerStatus, Severity, Blocker } from "@/lib/mock-data";
 import { BlockerStatusBadge, SeverityBadge } from "@/components/StatusBadges";
 import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useBlockers, useCreateBlocker, useUpdateBlocker } from "@/hooks/useBlockers";
+import { useProjects } from "@/hooks/useProjects";
 
 export const Route = createFileRoute("/blockers/")({
   head: () => ({ meta: [{ title: "חסמים - מהיסוד" }] }),
@@ -19,7 +21,8 @@ export const Route = createFileRoute("/blockers/")({
 });
 
 function BlockersPage() {
-  const { blockers, projects } = useStore();
+  const { data: blockers = [] } = useBlockers();
+  const { data: projects = [] } = useProjects();
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
 
   return (
@@ -55,6 +58,9 @@ function BlockersPage() {
                   <TableCell><BlockerDialog blocker={b} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} /></TableCell>
                 </TableRow>
               ))}
+              {blockers.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">אין חסמים</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -63,8 +69,10 @@ function BlockersPage() {
   );
 }
 
-function BlockerDialog({ trigger, blocker }: { trigger: React.ReactNode; blocker?: ReturnType<typeof useStore>["blockers"][number] }) {
-  const { projects } = useStore();
+function BlockerDialog({ trigger, blocker }: { trigger: React.ReactNode; blocker?: Blocker }) {
+  const { data: projects = [] } = useProjects();
+  const createBlocker = useCreateBlocker();
+  const updateBlocker = useUpdateBlocker();
   const [open, setOpen] = useState(false);
   const [projectId, setProjectId] = useState(blocker?.projectId ?? projects[0]?.id ?? "");
   const [title, setTitle] = useState(blocker?.title ?? "");
@@ -77,10 +85,21 @@ function BlockerDialog({ trigger, blocker }: { trigger: React.ReactNode; blocker
 
   const submit = () => {
     if (!title.trim()) return toast.error("יש להזין כותרת");
-    if (blocker) { store.updateBlocker(blocker.id, { projectId, title, description, impact, responsible, dueDate, status, priority }); toast.success("עודכן"); }
-    else { store.addBlocker({ projectId, title, description, impact, responsible, dueDate, status, priority }); toast.success("נוצר"); }
-    setOpen(false);
+    const data = { projectId, title, description, impact, responsible, dueDate, status, priority };
+    if (blocker) {
+      updateBlocker.mutate(
+        { id: blocker.id, data },
+        { onSuccess: () => { toast.success("עודכן"); setOpen(false); }, onError: () => toast.error("שגיאה") }
+      );
+    } else {
+      createBlocker.mutate(data, {
+        onSuccess: () => { toast.success("נוצר"); setOpen(false); },
+        onError: () => toast.error("שגיאה"),
+      });
+    }
   };
+
+  const isPending = createBlocker.isPending || updateBlocker.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -112,7 +131,10 @@ function BlockerDialog({ trigger, blocker }: { trigger: React.ReactNode; blocker
             </Select>
           </div>
         </div>
-        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button onClick={submit}>שמירה</Button></DialogFooter>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button>
+          <Button onClick={submit} disabled={isPending}>{isPending ? "שומר..." : "שמירה"}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
