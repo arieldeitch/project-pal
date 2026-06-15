@@ -1,7 +1,7 @@
 # 08 — Current Status
 
 > As of: 2026-06-15
-> Last updated: 2026-06-15 (post-auth, pre-deployment)
+> Last updated: 2026-06-15 (post-deployment, post-auth-fix)
 
 ---
 
@@ -9,40 +9,55 @@
 
 | Phase | Description | Status |
 |---|---|---|
-| Database foundation | Tables, views, triggers, migrations (12 files) | ✅ Complete |
+| Database foundation | Tables, views, triggers, 12 migration files | ✅ Complete |
 | Real data integration | Supabase client, repositories, TanStack Query hooks | ✅ Complete |
-| Authentication + RLS | Login page, AuthGate, strict role-based RLS (12 migrations written) | ✅ Complete — migrations pending DB deployment |
-| Supabase connection | Credentials configured in .env.local, DEV_BYPASS deactivated | ✅ Connected — migrations not yet applied |
-| Migrations applied to DB | 12 migration files run in Supabase | ⏳ Pending — product owner to execute manually |
-| Phase 2: PDF Generation | Daily Work Log PDF + Engineering Response PDF | ❌ Not started — post-deployment |
-| Phase 2: Photo Storage | Supabase Storage bucket, real photo upload | ❌ Not started — post-deployment |
+| Authentication + RLS | Login page, AuthGate, strict role-based RLS | ✅ Complete |
+| Supabase deployment | 10 migrations applied, DB verified, admin user created | ✅ Complete |
+| Runtime config fix | `.env` committed, placeholder URL removed, fail-fast | ✅ Complete |
+| MVP stabilization | Loading states, error states, page titles, dead code removed | ✅ Complete |
+| Phase 2: PDF Generation | Daily Work Log PDF + Engineering Response PDF | ❌ Not started — post-acceptance-testing |
+| Phase 2: Photo Storage | Supabase Storage bucket, real photo upload | ❌ Not started — post-acceptance-testing |
+
+---
+
+## Database Verification (confirmed 2026-06-15)
+
+| Metric | Count | Expected |
+|---|---|---|
+| Tables in `public` schema | 16 | 16 |
+| Tables with RLS enabled | 16 | 16 |
+| RLS policies | 61 | ≥38 |
+| Views | 4 | 4 |
+| Triggers | 15 | 15 |
+| Admin users in `user_profile` | 1 | ≥1 |
+
+**All verification checks: PASS**
+
+---
+
+## Authentication Status
+
+| Component | Status |
+|---|---|
+| DEV_BYPASS | REMOVED (commit 01f6422) |
+| Auth enforcement | ACTIVE — all 17 non-login routes behind AuthGate |
+| Login page | ACTIVE at `/login` |
+| Supabase endpoint | REACHABLE — `/auth/v1/token` confirmed responding |
+| Runtime credentials | COMMITTED — `.env` bakes `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` into all builds |
+
+**Known credential issue:** The admin user login currently returns "Invalid login credentials". This is not a code or connectivity problem — the endpoint responds correctly. The admin user's password needs to be verified or reset via Supabase Dashboard.
 
 ---
 
 ## What Works Right Now
 
-The app builds cleanly and is feature-complete for the MVP. The Supabase project is reachable and credentials are valid. All that remains before first real use is applying migrations and creating the admin user.
-
-- All 18 routes render correctly
-- Authentication enforces login (DEV_BYPASS is inactive)
-- All create/edit/resolve mutations are implemented
+- All 18 routes render correctly (17 protected + `/login` public)
+- Authentication enforces login — unauthenticated users redirected to `/login`
+- All create/edit/resolve mutations are implemented (live Supabase — no mock data)
 - Executive dashboard renders with charts
 - CSV export with Hebrew UTF-8 BOM works
-- Role-based RLS policies are written and will activate after migration 010
-
----
-
-## What Requires Migration Deployment
-
-The following will activate only after all 12 migrations are applied and admin user is created:
-
-- All 18 routes fetching live data
-- Role-based RLS (field_manager project isolation)
-- Admin login and session management
-- Auto-assigned log_number (trigger)
-- Duplicate log constraint enforcement
-- Immutability trigger (sent-report logs)
-- Management comments on tasks
+- Role-based RLS is ACTIVE (strict, post-migration-010)
+- Build passes: 0 TypeScript errors, 0 build errors
 
 ---
 
@@ -50,13 +65,11 @@ The following will activate only after all 12 migrations are applied and admin u
 
 | Limitation | Impact | Fix Phase |
 |---|---|---|
-| No auth — all routes public | Security risk in production | Phase 3 |
-| Photos show gray placeholders | Photos don't display | Phase 3 |
-| Photo upload removed from form | Cannot attach photos | Phase 3 |
+| Admin login returns "Invalid login credentials" | Acceptance testing blocked until resolved | Operational — password reset |
+| Photos show gray placeholders | Photos don't display (Storage not configured) | Phase 2 |
+| Photo upload not in form | Cannot attach photos | Phase 2 |
 | Cannot edit a daily log | Must delete and recreate | TBD |
-| No issue/blocker detail pages | Comments/photos not viewable | TBD |
-| No PDF export | Reports cannot be downloaded | Phase 4 |
-| Lint errors (CRLF) | Cosmetic; does not affect build | Run `npm run format` |
+| No PDF export | Reports cannot be downloaded | Phase 2 |
 | Chunks > 500 KB | Build warning; no runtime impact | Future: lazy load executive route |
 
 ---
@@ -68,7 +81,7 @@ The following will activate only after all 12 migrations are applied and admin u
 | Route files | 18 |
 | Repository files | 8 |
 | Hook files | 8 |
-| Migration files | 12 |
+| Migration files applied | 10 (of 12 written) |
 | Documentation files | 30+ |
 | UI component files (shadcn/ui) | ~40 |
 
@@ -78,7 +91,17 @@ The following will activate only after all 12 migrations are applied and admin u
 
 ```
 npm install    ✅ OK
-npm run build  ✅ OK (0 errors, 2 size warnings)
+npm run build  ✅ OK (0 errors, 2 size warnings — pre-existing)
 tsc --noEmit   ✅ OK (0 TypeScript errors)
-npm run lint   ⚠️ CRLF warnings only (not blocking)
 ```
+
+---
+
+## Commit History (significant)
+
+| Commit | Description |
+|---|---|
+| `01f6422` | Remove DEV_BYPASS — auth enforced unconditionally |
+| `f950e82` | Add missing page titles, remove dead scaffold code |
+| `fb32187` | Add loading/error states, fix misleading toast |
+| `1a46cb1` | Fix login failure — commit `.env`, remove placeholder URL fallback |

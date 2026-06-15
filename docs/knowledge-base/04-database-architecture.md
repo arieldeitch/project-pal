@@ -2,14 +2,24 @@
 
 ## Migration Files
 
-All migrations live in `supabase/migrations/`. Apply in order.
+All migrations live in `supabase/migrations/`. Applied status as of 2026-06-15.
 
-| File | Contents |
-|---|---|
-| `20260615000001_create_tables.sql` | All tables, primary keys, foreign keys, unique constraints, indexes |
-| `20260615000002_create_views.sql` | `project_summary` view, `daily_log_summary` view |
-| `20260615000003_create_triggers.sql` | `assign_log_number`, `set_resolved_at`, immutability guards |
-| `20260615000004_seed_data.sql` | 3 projects, 24 logs, 16 issues, 11 blockers, 10 decisions, 19 reports |
+| File | Contents | Status |
+|---|---|---|
+| `20260615000001_create_tables.sql` | All tables, PKs, FKs, unique constraints, indexes | ✅ Applied |
+| `20260615000002_create_views.sql` | `project_summary` view, `daily_log_summary` view | ✅ Applied |
+| `20260615000003_create_triggers.sql` | `assign_log_number`, `set_resolved_at`, immutability guards | ✅ Applied |
+| `20260615000004_seed_data.sql` | 3 projects, 24 logs, 16 issues, 11 blockers, 10 decisions, 19 reports | — (seed, optional) |
+| `20260615000005_add_site_table.sql` | `site` table, site-project relationship | ✅ Applied |
+| `20260615000006_add_task_tables.sql` | `task`, `task_update` tables | ✅ Applied |
+| `20260615000007_add_rls_auth.sql` | Enable RLS + permissive authenticated policies on 13 tables | ✅ Applied |
+| `20260615000008_seed_sites_tasks.sql` | Seed data for sites and tasks | — (seed, optional) |
+| `20260615000009_user_profile_roles.sql` | `user_profile` table, role enum, RLS | ✅ Applied |
+| `20260615000010_strict_rls.sql` | Drop permissive policies, create strict role-scoped policies | ✅ Applied |
+| `20260615000011_task_comments.sql` | `task_comment` table + RLS (4 policies) | ✅ Applied |
+| `20260615000012_project_member_rls.sql` | `project_member` table + RLS (4 policies) | ✅ Applied |
+
+**Deployed DB state (verified 2026-06-15):** 16 tables, 16 with RLS, 61 policies, 4 views, 15 triggers, 1 admin user.
 
 ---
 

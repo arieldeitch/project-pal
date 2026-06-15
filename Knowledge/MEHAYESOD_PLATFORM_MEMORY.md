@@ -201,31 +201,37 @@ This is the primary CEO view.
 
 # Technical Principles
 
-Phase 1:
+## Completed Phases
 
-* Mock Data
-* UI Validation
-* Workflow Validation
+Phase 1 — Mock Data MVP:
+* UI, workflow validation, all core screens built with mock data
 
-Phase 2:
+Phase 2 — Supabase Integration (COMPLETE):
+* Supabase client, repositories, TanStack Query
+* 10 migrations deployed, 16 tables, 61 RLS policies
+* Real data in all 18 routes — no mock data at runtime
 
-* Supabase
-* Database
-* Storage
+Phase 3 — Authentication + RLS (COMPLETE):
+* Email/password auth via Supabase Auth
+* Strict role-based RLS (admin / company_manager / field_manager)
+* AuthGate enforces login on all 17 non-login routes
+* DEV_BYPASS removed
 
-Phase 3:
+## Pending Phases
 
-* Authentication
-* Roles
-* Permissions
+Phase 4 — Reporting Engine:
+* Branded PDF generation (Daily Work Log + Engineering Response)
+* Supabase Storage for photo upload
+* Reference specifications in docs/knowledge-base/13-reference-report-specifications.md
 
-Phase 4:
+Phase 5 — Production Hardening:
+* Advanced analytics, automated delivery, notifications
+* Requires explicit product owner approval
 
-* Reporting Engine
+## Current State (2026-06-15)
 
-Phase 5:
-
-* Production Hardening
+MVP is deployed and ready for acceptance testing.
+Single remaining operational blocker: admin login credential needs reset.
 
 ---
 

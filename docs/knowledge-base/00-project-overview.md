@@ -64,7 +64,7 @@ The following features are explicitly OUT of the current MVP and must not be add
 
 ## Product Stage
 
-**Phase 1 (current):** Operational MVP — single company deployment. The architecture is designed to scale to multi-tenant SaaS later but currently targets one company. Supabase backend is configured; migrations are pending deployment.
+**Phase 1 (complete):** Operational MVP — single company deployment. The architecture is designed to scale to multi-tenant SaaS later but currently targets one company. Supabase backend is live: 10 migrations deployed, 16 tables, strict RLS, admin user created, authentication enforced. Pending: acceptance testing and admin credential verification.
 
 **Phase 2 (next):** Field reporting and professional PDF generation. Based on reference documents provided by the product owner, Phase 2 will add branded PDF output for two report types:
 - Daily Work Log PDF (יומן עבודה) — structured daily site activity record for clients and supervision

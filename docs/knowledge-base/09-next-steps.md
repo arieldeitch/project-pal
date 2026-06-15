@@ -1,43 +1,49 @@
 # 09 — Next Steps
 
 > Last updated: 2026-06-15
-> Current state: MVP feature-complete. Supabase project connected. Migrations pending.
+> Current state: MVP deployed. Auth enforced. DB live. Awaiting acceptance testing.
 
 ---
 
-## Immediate — Supabase Deployment
+## Immediate — Unblock Admin Login
 
-This is the only active work item. No new features until this is complete.
+**Status:** The admin user in Supabase returns "Invalid login credentials" on login attempt.
+This is a credentials issue, not a code or connectivity issue.
 
-See `DATABASE_DEPLOYMENT_ORDER.md` and `GO_LIVE_CHECKLIST.md` for exact steps.
+**Action:**
+1. Open Supabase Dashboard → Authentication → Users
+2. Find the admin user
+3. Use "Send password reset" or manually set a new password
+4. Confirm the user's email is verified (autoconfirm may be OFF — check Authentication → Settings)
+5. Log in via the app at `/login`
 
-### Phase A — Migrations (before admin creation)
-Run in Supabase SQL Editor in this exact order:
-```
-001 → 002 → 003 → 005 → 006 → 007 → 009
-```
+**This is the only blocker before acceptance testing.**
 
-### Admin Creation (between phases)
-1. In Supabase Auth dashboard: create admin user
-2. Confirm email (autoconfirm is OFF — enable temporarily or click confirmation link)
-3. In SQL Editor: set `user_profile.role = 'admin'`
-4. Verify: `SELECT COUNT(*) FROM user_profile WHERE role = 'admin';` → must return 1
+---
 
-### Phase B — Strict RLS (after admin creation)
-```
-010 → 011 → 012
-```
+## Acceptance Testing
 
-### Post-Deployment Verification
-1. Run `POST_DEPLOYMENT_VERIFICATION.sql` in Supabase SQL Editor
-2. Run smoke tests from `DEPLOYMENT_SMOKE_TEST.md` (49 tests)
-3. Confirm all go/no-go criteria pass
+Once login is unblocked:
+
+Run the 49 smoke tests in `DEPLOYMENT_SMOKE_TEST.md` (if it exists) or execute manual verification:
+
+1. Log in as admin
+2. Verify redirect from `/login` → `/`
+3. Create a new project
+4. Add a daily log
+5. Add an issue and mark it resolved
+6. Add a blocker
+7. Log a decision
+8. View executive dashboard — verify all KPIs reflect live data
+9. Export CSV from any list
+10. Log out — verify redirect to `/login`
+11. Verify unauthenticated access to `/` redirects to `/login`
 
 ---
 
 ## Phase 2 — Field Reporting and PDF Generation
 
-**Gate:** Do not begin until Supabase deployment is verified and product owner approves.
+**Gate:** Do not begin until acceptance testing is complete and product owner approves.
 
 Phase 2 scope is defined by two reference documents provided by the product owner:
 - Daily Work Log PDF (יומן עבודה)

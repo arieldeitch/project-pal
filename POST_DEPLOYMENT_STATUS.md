@@ -11,9 +11,9 @@
 | `VITE_SUPABASE_ANON_KEY` | PRESENT | `sb_publishable_0KMZ63b...` (46 chars, `sb_publishable_` format) |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | NOT SET | Fallback only — not required when ANON_KEY is present |
 
-**Source:** `.env.local` (git-ignored, local dev only)
+**Source:** `.env` (committed to git in commit `1a46cb1` — baked into all builds including Lovable Cloud).
 
-**Lovable Cloud note:** `.env.local` is never committed and never seen by the Lovable build pipeline. If deploying via Lovable Cloud, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` must be set separately in the Lovable Dashboard environment variable settings.
+Real URL and anon key are present in both client and server bundles. Lovable Cloud will pick them up automatically from the committed `.env` file.
 
 ---
 
@@ -37,31 +37,11 @@ VITE_SUPABASE_ANON_KEY ?? VITE_SUPABASE_PUBLISHABLE_KEY
 
 ## 3. DEV_BYPASS Status
 
-**File:** `src/routes/__root.tsx` (lines 132–139)
+**FULLY REMOVED** in commit `01f6422`. The `DEV_BYPASS` constant, the yellow development banner, and all conditional auth-bypass logic have been deleted from `src/routes/__root.tsx`.
 
-```ts
-const _anonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  "";
-const DEV_BYPASS =
-  !import.meta.env.VITE_SUPABASE_URL?.includes(".supabase.co") ||
-  _anonKey.length < 20 ||
-  _anonKey === "your-anon-key-here";
-```
+`AuthGate` now enforces authentication unconditionally. There is no bypass mechanism of any kind.
 
-**Evaluation with current credentials:**
-
-| Condition | Value | Result |
-|---|---|---|
-| URL does NOT contain `.supabase.co` | `nxvovzcadxcntogwxsoh.supabase.co` → contains it | `false` |
-| Key length < 20 | Key is 46 chars | `false` |
-| Key equals `"your-anon-key-here"` | Key starts with `sb_publishable_` | `false` |
-| **DEV_BYPASS** | `false \|\| false \|\| false` | **`false`** |
-
-**DEV_BYPASS is DISABLED.** Auth gate is enforced. Yellow development banner will NOT appear. All unauthenticated users will be redirected to `/login`.
-
-**Verdict: PASS**
+**Verdict: PASS — no bypass code exists in codebase**
 
 ---
 
@@ -178,13 +158,14 @@ Based on migration audit (from `DATABASE_RISK_REPORT.md`) and the deployed migra
 
 ## 9. Known Blockers
 
-| # | Blocker | Severity | Action Required |
+| # | Blocker | Severity | Status |
 |---|---|---|---|
-| B1 | Supabase Storage bucket not created | Medium | Photo upload (`storage_key` column exists but no bucket) — affects Phase 2 only, not MVP |
-| B2 | Email autoconfirm is OFF | Medium | Admin must manually confirm each new user's email in Supabase Dashboard before first login |
-| B3 | Lovable Cloud env vars not configured | Medium | If deploying via Lovable: set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Lovable Dashboard separately from `.env.local` |
-| B4 | Admin user creation not verified here | High | Cannot confirm programmatically — must verify manually: `SELECT role FROM public.user_profile WHERE role = 'admin';` |
-| B5 | `POST_DEPLOYMENT_VERIFICATION.sql` not yet executed | High | Run against live database to confirm all 15 tables, 38+ policies, and 11 functions exist |
+| B1 | Supabase Storage bucket not created | Medium | Active — Phase 2 only, not MVP |
+| B2 | Email autoconfirm is OFF | Medium | Active — admin must confirm new user emails in Supabase Dashboard |
+| B3 | Lovable Cloud env vars not configured | ~~Medium~~ | **RESOLVED** — `.env` committed in commit `1a46cb1`; credentials baked into all builds |
+| B4 | Admin user creation not verified | ~~High~~ | **RESOLVED** — DB verification confirmed `admin_count = 1` |
+| B5 | `POST_DEPLOYMENT_VERIFICATION.sql` not executed | ~~High~~ | **RESOLVED** — DB verified: 16 tables, 16 RLS-enabled, 61 policies, 4 views, 15 triggers, 1 admin |
+| B6 | Admin login returns "Invalid login credentials" | High | Active — password needs reset via Supabase Dashboard |
 
 ---
 
@@ -232,11 +213,12 @@ Based on migration audit (from `DATABASE_RISK_REPORT.md`) and the deployed migra
 
 | Area | Status |
 |---|---|
-| Database schema | DEPLOYED (12 migrations) |
-| Authentication | PRODUCTION-READY |
-| DEV_BYPASS | DISABLED |
-| Data layer | LIVE (Supabase, no mock data) |
-| RLS | STRICT (post-010) |
+| Database schema | DEPLOYED (10 migrations applied, 16 tables) |
+| RLS | STRICT — 61 policies, all 16 tables protected |
+| Authentication | ENFORCED — DEV_BYPASS removed, AuthGate unconditional |
+| Runtime credentials | COMMITTED — `.env` bakes real Supabase URL + key into all builds |
+| Data layer | LIVE — 8 repositories, Supabase only, no mock data at runtime |
 | Routes | 18 active (17 protected + `/login`) |
-| Smoke test package | READY (49 tests in `DEPLOYMENT_SMOKE_TEST.md`) |
-| Pending manual action | Run `POST_DEPLOYMENT_VERIFICATION.sql` + confirm admin user |
+| Build | PASS — 0 errors (client + SSR) |
+| Active blocker | Admin login returns "Invalid login credentials" (B6) — reset password to unblock |
+| MVP readiness | READY FOR ACCEPTANCE TESTING once B6 is resolved |
