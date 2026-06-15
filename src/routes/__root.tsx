@@ -126,18 +126,6 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-// Bypass auth when Supabase credentials are not yet configured.
-// Accepts VITE_SUPABASE_ANON_KEY (external project) or VITE_SUPABASE_PUBLISHABLE_KEY (Lovable Cloud).
-// When either key is present with a real URL, normal auth enforcement is restored automatically.
-const _anonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  "";
-const DEV_BYPASS =
-  !import.meta.env.VITE_SUPABASE_URL?.includes(".supabase.co") ||
-  _anonKey.length < 20 ||
-  _anonKey === "your-anon-key-here";
-
 function AuthGate() {
   const { session, loading } = useAuthContext();
   const router = useRouter();
@@ -145,7 +133,6 @@ function AuthGate() {
   const isLoginPage = pathname === "/login";
 
   useEffect(() => {
-    if (DEV_BYPASS) return;
     if (loading) return;
     if (!session && !isLoginPage) {
       router.navigate({ to: "/login", replace: true });
@@ -154,29 +141,6 @@ function AuthGate() {
       router.navigate({ to: "/", replace: true });
     }
   }, [session, loading, isLoginPage, router]);
-
-  if (DEV_BYPASS) {
-    return (
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2 text-center text-sm text-yellow-800">
-              Development Mode: Authentication temporarily bypassed until Supabase configuration is completed.
-            </div>
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur">
-              <SidebarTrigger />
-              <h1 className="text-sm font-semibold text-foreground">מהיסוד PM</h1>
-            </header>
-            <main className="flex-1 p-6">
-              <Outlet />
-            </main>
-          </div>
-        </div>
-        <Toaster richColors position="top-center" />
-      </SidebarProvider>
-    );
-  }
 
   if (loading) {
     return (
