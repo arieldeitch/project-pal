@@ -1,0 +1,19 @@
+PHASE A
+001.sql
+002.sql
+003.sql
+005.sql
+006.sql
+007.sql
+009.sql
+
+ADMIN CREATION
+
+PHASE B
+010.sql
+011.sql
+012.sql
+
+OPTIONAL SEED
+004.sql
+008.sql
