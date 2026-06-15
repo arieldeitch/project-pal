@@ -90,6 +90,13 @@ export const issueRepository = {
     return dbToIssue(data as Record<string, unknown>);
   },
 
+  async addComment(issueId: string, author: string, body: string): Promise<void> {
+    const { error } = await supabase
+      .from("issue_comment")
+      .insert({ issue_id: issueId, author, body });
+    if (error) throw error;
+  },
+
   async update(id: string, input: Partial<CreateIssueInput & { status: IssueStatus }>): Promise<Issue> {
     const patch: Record<string, unknown> = {};
     if (input.projectId !== undefined) patch.project_id = input.projectId;

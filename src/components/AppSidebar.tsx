@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useRouter } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -9,10 +9,14 @@ import {
   FileText,
   BarChart3,
   HardHat,
+  Building2,
+  CheckSquare,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -21,10 +25,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuthContext } from "@/lib/auth-context";
+import { useSignOut } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const items = [
   { title: "דשבורד", url: "/", icon: LayoutDashboard, exact: true },
+  { title: "אתרים", url: "/sites", icon: Building2 },
   { title: "פרויקטים", url: "/projects", icon: FolderKanban },
+  { title: "משימות", url: "/tasks", icon: CheckSquare },
   { title: "יומני עבודה", url: "/daily-logs", icon: ClipboardList },
   { title: "ליקויים", url: "/issues", icon: AlertTriangle },
   { title: "חסמים", url: "/blockers", icon: Ban },
@@ -35,6 +44,16 @@ const items = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const { session } = useAuthContext();
+  const signOut = useSignOut();
+  const router = useRouter();
+
+  function handleSignOut() {
+    signOut.mutate(undefined, {
+      onSuccess: () => router.navigate({ to: "/login", replace: true }),
+      onError: () => toast.error("שגיאה בהתנתקות"),
+    });
+  }
 
   return (
     <Sidebar side="right" collapsible="icon">
@@ -49,6 +68,7 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>ניווט</SidebarGroupLabel>
@@ -71,6 +91,24 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border">
+        <div className="px-2 py-2">
+          {session?.user?.email && (
+            <p className="mb-2 truncate text-xs text-sidebar-foreground/60">
+              {session.user.email}
+            </p>
+          )}
+          <button
+            onClick={handleSignOut}
+            disabled={signOut.isPending}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>התנתק</span>
+          </button>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

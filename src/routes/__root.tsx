@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -14,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuthContext } from "@/lib/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -124,26 +126,68 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AuthGate() {
+  const { session, loading } = useAuthContext();
+  const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isLoginPage = pathname === "/login";
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session && !isLoginPage) {
+      router.navigate({ to: "/login", replace: true });
+    }
+    if (session && isLoginPage) {
+      router.navigate({ to: "/", replace: true });
+    }
+  }, [session, loading, isLoginPage, router]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">טוען...</p>
+      </div>
+    );
+  }
+
+  if (!session && !isLoginPage) return null;
+
+  if (isLoginPage) {
+    return (
+      <>
+        <Outlet />
+        <Toaster richColors position="top-center" />
+      </>
+    );
+  }
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar />
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur">
+            <SidebarTrigger />
+            <h1 className="text-sm font-semibold text-foreground">מהיסוד PM</h1>
+          </header>
+          <main className="flex-1 p-6">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+      <Toaster richColors position="top-center" />
+    </SidebarProvider>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur">
-              <SidebarTrigger />
-              <h1 className="text-sm font-semibold text-foreground">מהיסוד PM</h1>
-            </header>
-            <main className="flex-1 p-6">
-              <Outlet />
-            </main>
-          </div>
-        </div>
-        <Toaster richColors position="top-center" />
-      </SidebarProvider>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

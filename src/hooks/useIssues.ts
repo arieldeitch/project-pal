@@ -34,3 +34,12 @@ export function useUpdateIssue() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["issues"] }),
   });
 }
+
+export function useAddIssueComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ issueId, author, body }: { issueId: string; author: string; body: string }) =>
+      issueRepository.addComment(issueId, author, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["issues"] }),
+  });
+}

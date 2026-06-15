@@ -1,77 +1,75 @@
 import { supabase } from "@/lib/supabase";
-import type { Project, ProjectStatus } from "@/lib/mock-data";
+import type { Site, SiteStatus, SiteType } from "@/lib/mock-data";
 
-function dbToProject(row: Record<string, unknown>): Project {
+function dbToSite(row: Record<string, unknown>): Site {
   return {
     id: row.id as string,
-    siteId: (row.site_id as string) ?? undefined,
     name: row.name as string,
     address: row.address as string,
+    type: row.type as SiteType,
     client: row.client as string,
-    manager: row.manager as string,
-    status: row.status as ProjectStatus,
-    startDate: row.start_date as string,
-    targetDate: row.target_date as string,
+    status: row.status as SiteStatus,
+    startDate: (row.start_date as string) ?? undefined,
+    targetDate: (row.target_date as string) ?? undefined,
+    createdAt: row.created_at as string,
   };
 }
 
-export const projectRepository = {
-  async list(): Promise<Project[]> {
+export const siteRepository = {
+  async list(): Promise<Site[]> {
     const { data, error } = await supabase
-      .from("project")
+      .from("site")
       .select("*")
       .order("name");
     if (error) throw error;
-    return data.map(dbToProject);
+    return data.map(dbToSite);
   },
 
-  async get(id: string): Promise<Project | null> {
+  async get(id: string): Promise<Site | null> {
     const { data, error } = await supabase
-      .from("project")
+      .from("site")
       .select("*")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data ? dbToProject(data) : null;
+    return data ? dbToSite(data) : null;
   },
 
-  async create(input: Omit<Project, "id">): Promise<Project> {
+  async create(input: Omit<Site, "id" | "createdAt">): Promise<Site> {
     const { data, error } = await supabase
-      .from("project")
+      .from("site")
       .insert({
         name: input.name,
         address: input.address,
+        type: input.type,
         client: input.client,
-        manager: input.manager,
         status: input.status,
-        start_date: input.startDate,
-        target_date: input.targetDate,
-        site_id: input.siteId ?? null,
+        start_date: input.startDate ?? null,
+        target_date: input.targetDate ?? null,
       })
       .select()
       .single();
     if (error) throw error;
-    return dbToProject(data);
+    return dbToSite(data);
   },
 
-  async update(id: string, input: Partial<Omit<Project, "id">>): Promise<Project> {
+  async update(id: string, input: Partial<Omit<Site, "id" | "createdAt">>): Promise<Site> {
     const patch: Record<string, unknown> = {};
     if (input.name !== undefined) patch.name = input.name;
     if (input.address !== undefined) patch.address = input.address;
+    if (input.type !== undefined) patch.type = input.type;
     if (input.client !== undefined) patch.client = input.client;
-    if (input.manager !== undefined) patch.manager = input.manager;
     if (input.status !== undefined) patch.status = input.status;
     if (input.startDate !== undefined) patch.start_date = input.startDate;
     if (input.targetDate !== undefined) patch.target_date = input.targetDate;
-    if (input.siteId !== undefined) patch.site_id = input.siteId ?? null;
 
     const { data, error } = await supabase
-      .from("project")
+      .from("site")
       .update(patch)
       .eq("id", id)
       .select()
       .single();
     if (error) throw error;
-    return dbToProject(data);
+    return dbToSite(data);
   },
 };

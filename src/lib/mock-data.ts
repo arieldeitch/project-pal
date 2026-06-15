@@ -1,6 +1,11 @@
 // App-domain types (camelCase). These are the canonical shape used by all UI components.
 // Data is now fetched from Supabase via repositories and React Query hooks.
 
+export type SiteType = "residential" | "commercial" | "industrial" | "infrastructure";
+export type SiteStatus = "planning" | "active" | "completed" | "on_hold";
+export type TaskStatus = "not_started" | "in_progress" | "completed" | "blocked";
+export type TaskPriority = "low" | "medium" | "high" | "critical";
+
 export type ProjectStatus = "planning" | "active" | "on_hold" | "completed";
 export type IssueStatus = "open" | "in_progress" | "resolved" | "reopened" | "closed";
 export type Severity = "low" | "medium" | "high" | "critical";
@@ -9,8 +14,21 @@ export type DecisionStatus = "pending" | "approved" | "rejected" | "deferred";
 export type ReportStatus = "draft" | "ready" | "sent";
 export type ReportType = "daily" | "weekly" | "monthly";
 
+export interface Site {
+  id: string;
+  name: string;
+  address: string;
+  type: SiteType;
+  client: string;
+  status: SiteStatus;
+  startDate?: string;
+  targetDate?: string;
+  createdAt: string;
+}
+
 export interface Project {
   id: string;
+  siteId?: string;
   name: string;
   address: string;
   client: string;
@@ -18,6 +36,40 @@ export interface Project {
   status: ProjectStatus;
   startDate: string;
   targetDate: string;
+}
+
+export interface Task {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assignedTo: string;
+  dueDate?: string;
+  progress: number;
+  createdAt: string;
+  updates?: TaskUpdate[];
+  comments?: TaskComment[];
+}
+
+export interface TaskUpdate {
+  id: string;
+  taskId: string;
+  submittedBy: string;
+  content: string;
+  progressAfter: number;
+  createdAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId?: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ContractorRow {
@@ -110,6 +162,34 @@ export interface Report {
   type: ReportType;
   sentAt?: string;
 }
+
+export const siteTypeLabel: Record<SiteType, string> = {
+  residential: "מגורים",
+  commercial: "מסחרי",
+  industrial: "תעשייה",
+  infrastructure: "תשתיות",
+};
+
+export const siteStatusLabel: Record<SiteStatus, string> = {
+  planning: "תכנון",
+  active: "פעיל",
+  completed: "הושלם",
+  on_hold: "מושהה",
+};
+
+export const taskStatusLabel: Record<TaskStatus, string> = {
+  not_started: "טרם התחיל",
+  in_progress: "בביצוע",
+  completed: "הושלם",
+  blocked: "חסום",
+};
+
+export const taskPriorityLabel: Record<TaskPriority, string> = {
+  low: "נמוך",
+  medium: "בינוני",
+  high: "גבוה",
+  critical: "קריטי",
+};
 
 export const projectStatusLabel: Record<ProjectStatus, string> = {
   planning: "תכנון",

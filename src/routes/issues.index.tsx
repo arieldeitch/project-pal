@@ -9,15 +9,78 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { IssueStatus, Severity, Issue } from "@/lib/mock-data";
 import { IssueStatusBadge, SeverityBadge } from "@/components/StatusBadges";
-import { MessageSquare, MapPin, Plus, Pencil } from "lucide-react";
+import { MessageSquare, MapPin, Plus, Pencil, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { toast } from "sonner";
-import { useIssues, useCreateIssue, useUpdateIssue } from "@/hooks/useIssues";
+import { useIssues, useCreateIssue, useUpdateIssue, useAddIssueComment } from "@/hooks/useIssues";
+import { useSession } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
 
 export const Route = createFileRoute("/issues/")({
   head: () => ({ meta: [{ title: "ליקויים - מהיסוד" }] }),
   component: IssuesPage,
 });
+
+function IssueComments({ issue }: { issue: Issue }) {
+  const [expanded, setExpanded] = useState(false);
+  const [body, setBody] = useState("");
+  const addComment = useAddIssueComment();
+  const { session } = useSession();
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!body.trim()) return;
+    addComment.mutate(
+      { issueId: issue.id, author: session?.user?.email ?? "מנהל", body: body.trim() },
+      {
+        onSuccess: () => { toast.success("ההערה נשמרה"); setBody(""); },
+        onError: () => toast.error("שגיאה בשמירת ההערה"),
+      },
+    );
+  }
+
+  return (
+    <div className="border-t pt-2">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between text-xs text-muted-foreground hover:text-foreground"
+      >
+        <span className="flex items-center gap-1">
+          <MessageSquare className="h-3 w-3" />
+          {issue.comments.length} הערות
+        </span>
+        {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          {issue.comments.map((c) => (
+            <div key={c.id} className="rounded bg-muted/50 px-2 py-1.5 text-xs">
+              <span className="font-medium">{c.author}</span>
+              <span className="mx-1 text-muted-foreground">·</span>
+              <span className="text-muted-foreground">{c.date}</span>
+              <p className="mt-0.5 text-foreground">{c.text}</p>
+            </div>
+          ))}
+          <form onSubmit={handleSubmit} className="flex gap-1">
+            <input
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="הוסף הערה..."
+              className="flex-1 rounded border border-input bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={addComment.isPending || !body.trim()}
+              className="rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Send className="h-3 w-3" />
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function IssuesPage() {
   const { data: issues = [] } = useIssues();
@@ -81,7 +144,7 @@ function IssuesPage() {
                   <IssueDialog issue={i} trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>} />
                 </div>
               </div>
-              <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => toast.info("סימון על תמונה - בפיתוח")}>📍 סימון על תמונה (Placeholder)</Button>
+              <IssueComments issue={i} />
             </CardContent>
           </Card>
         ))}

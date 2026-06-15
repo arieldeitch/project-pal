@@ -9,19 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ExecutiveRouteImport } from './routes/executive'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TasksIndexRouteImport } from './routes/tasks.index'
+import { Route as SitesIndexRouteImport } from './routes/sites.index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as IssuesIndexRouteImport } from './routes/issues.index'
 import { Route as DecisionsIndexRouteImport } from './routes/decisions.index'
 import { Route as DailyLogsIndexRouteImport } from './routes/daily-logs.index'
 import { Route as BlockersIndexRouteImport } from './routes/blockers.index'
+import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
+import { Route as SitesSiteIdRouteImport } from './routes/sites.$siteId'
 import { Route as ReportsReportIdRouteImport } from './routes/reports.$reportId'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as DailyLogsNewRouteImport } from './routes/daily-logs.new'
 import { Route as DailyLogsLogIdRouteImport } from './routes/daily-logs.$logId'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExecutiveRoute = ExecutiveRouteImport.update({
   id: '/executive',
   path: '/executive',
@@ -30,6 +40,16 @@ const ExecutiveRoute = ExecutiveRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksIndexRoute = TasksIndexRouteImport.update({
+  id: '/tasks/',
+  path: '/tasks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitesIndexRoute = SitesIndexRouteImport.update({
+  id: '/sites/',
+  path: '/sites/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsIndexRoute = ReportsIndexRouteImport.update({
@@ -62,6 +82,16 @@ const BlockersIndexRoute = BlockersIndexRouteImport.update({
   path: '/blockers/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
+  id: '/tasks/$taskId',
+  path: '/tasks/$taskId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitesSiteIdRoute = SitesSiteIdRouteImport.update({
+  id: '/sites/$siteId',
+  path: '/sites/$siteId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsReportIdRoute = ReportsReportIdRouteImport.update({
   id: '/reports/$reportId',
   path: '/reports/$reportId',
@@ -86,108 +116,150 @@ const DailyLogsLogIdRoute = DailyLogsLogIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/executive': typeof ExecutiveRoute
+  '/login': typeof LoginRoute
   '/daily-logs/$logId': typeof DailyLogsLogIdRoute
   '/daily-logs/new': typeof DailyLogsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/reports/$reportId': typeof ReportsReportIdRoute
+  '/sites/$siteId': typeof SitesSiteIdRoute
+  '/tasks/$taskId': typeof TasksTaskIdRoute
   '/blockers/': typeof BlockersIndexRoute
   '/daily-logs/': typeof DailyLogsIndexRoute
   '/decisions/': typeof DecisionsIndexRoute
   '/issues/': typeof IssuesIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/reports/': typeof ReportsIndexRoute
+  '/sites/': typeof SitesIndexRoute
+  '/tasks/': typeof TasksIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/executive': typeof ExecutiveRoute
+  '/login': typeof LoginRoute
   '/daily-logs/$logId': typeof DailyLogsLogIdRoute
   '/daily-logs/new': typeof DailyLogsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/reports/$reportId': typeof ReportsReportIdRoute
+  '/sites/$siteId': typeof SitesSiteIdRoute
+  '/tasks/$taskId': typeof TasksTaskIdRoute
   '/blockers': typeof BlockersIndexRoute
   '/daily-logs': typeof DailyLogsIndexRoute
   '/decisions': typeof DecisionsIndexRoute
   '/issues': typeof IssuesIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/reports': typeof ReportsIndexRoute
+  '/sites': typeof SitesIndexRoute
+  '/tasks': typeof TasksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/executive': typeof ExecutiveRoute
+  '/login': typeof LoginRoute
   '/daily-logs/$logId': typeof DailyLogsLogIdRoute
   '/daily-logs/new': typeof DailyLogsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/reports/$reportId': typeof ReportsReportIdRoute
+  '/sites/$siteId': typeof SitesSiteIdRoute
+  '/tasks/$taskId': typeof TasksTaskIdRoute
   '/blockers/': typeof BlockersIndexRoute
   '/daily-logs/': typeof DailyLogsIndexRoute
   '/decisions/': typeof DecisionsIndexRoute
   '/issues/': typeof IssuesIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/reports/': typeof ReportsIndexRoute
+  '/sites/': typeof SitesIndexRoute
+  '/tasks/': typeof TasksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/executive'
+    | '/login'
     | '/daily-logs/$logId'
     | '/daily-logs/new'
     | '/projects/$projectId'
     | '/reports/$reportId'
+    | '/sites/$siteId'
+    | '/tasks/$taskId'
     | '/blockers/'
     | '/daily-logs/'
     | '/decisions/'
     | '/issues/'
     | '/projects/'
     | '/reports/'
+    | '/sites/'
+    | '/tasks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/executive'
+    | '/login'
     | '/daily-logs/$logId'
     | '/daily-logs/new'
     | '/projects/$projectId'
     | '/reports/$reportId'
+    | '/sites/$siteId'
+    | '/tasks/$taskId'
     | '/blockers'
     | '/daily-logs'
     | '/decisions'
     | '/issues'
     | '/projects'
     | '/reports'
+    | '/sites'
+    | '/tasks'
   id:
     | '__root__'
     | '/'
     | '/executive'
+    | '/login'
     | '/daily-logs/$logId'
     | '/daily-logs/new'
     | '/projects/$projectId'
     | '/reports/$reportId'
+    | '/sites/$siteId'
+    | '/tasks/$taskId'
     | '/blockers/'
     | '/daily-logs/'
     | '/decisions/'
     | '/issues/'
     | '/projects/'
     | '/reports/'
+    | '/sites/'
+    | '/tasks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExecutiveRoute: typeof ExecutiveRoute
+  LoginRoute: typeof LoginRoute
   DailyLogsLogIdRoute: typeof DailyLogsLogIdRoute
   DailyLogsNewRoute: typeof DailyLogsNewRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   ReportsReportIdRoute: typeof ReportsReportIdRoute
+  SitesSiteIdRoute: typeof SitesSiteIdRoute
+  TasksTaskIdRoute: typeof TasksTaskIdRoute
   BlockersIndexRoute: typeof BlockersIndexRoute
   DailyLogsIndexRoute: typeof DailyLogsIndexRoute
   DecisionsIndexRoute: typeof DecisionsIndexRoute
   IssuesIndexRoute: typeof IssuesIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
+  SitesIndexRoute: typeof SitesIndexRoute
+  TasksIndexRoute: typeof TasksIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/executive': {
       id: '/executive'
       path: '/executive'
@@ -200,6 +272,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks/': {
+      id: '/tasks/'
+      path: '/tasks'
+      fullPath: '/tasks/'
+      preLoaderRoute: typeof TasksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sites/': {
+      id: '/sites/'
+      path: '/sites'
+      fullPath: '/sites/'
+      preLoaderRoute: typeof SitesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports/': {
@@ -244,6 +330,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlockersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tasks/$taskId': {
+      id: '/tasks/$taskId'
+      path: '/tasks/$taskId'
+      fullPath: '/tasks/$taskId'
+      preLoaderRoute: typeof TasksTaskIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sites/$siteId': {
+      id: '/sites/$siteId'
+      path: '/sites/$siteId'
+      fullPath: '/sites/$siteId'
+      preLoaderRoute: typeof SitesSiteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/$reportId': {
       id: '/reports/$reportId'
       path: '/reports/$reportId'
@@ -278,16 +378,21 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExecutiveRoute: ExecutiveRoute,
+  LoginRoute: LoginRoute,
   DailyLogsLogIdRoute: DailyLogsLogIdRoute,
   DailyLogsNewRoute: DailyLogsNewRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   ReportsReportIdRoute: ReportsReportIdRoute,
+  SitesSiteIdRoute: SitesSiteIdRoute,
+  TasksTaskIdRoute: TasksTaskIdRoute,
   BlockersIndexRoute: BlockersIndexRoute,
   DailyLogsIndexRoute: DailyLogsIndexRoute,
   DecisionsIndexRoute: DecisionsIndexRoute,
   IssuesIndexRoute: IssuesIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
   ReportsIndexRoute: ReportsIndexRoute,
+  SitesIndexRoute: SitesIndexRoute,
+  TasksIndexRoute: TasksIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

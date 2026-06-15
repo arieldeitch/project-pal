@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useProjects } from "@/hooks/useProjects";
 import { useCreateDailyLog } from "@/hooks/useDailyLogs";
+import { useSession } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/daily-logs/new")({
   head: () => ({ meta: [{ title: "יומן חדש - מהיסוד" }] }),
@@ -26,12 +27,13 @@ function NewDailyLog() {
   const createLog = useCreateDailyLog();
   const navigate = useNavigate();
   const search = Route.useSearch();
+  const { session } = useSession();
 
   const [projectId, setProjectId] = useState(search.projectId ?? projects[0]?.id ?? "");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [workHours, setWorkHours] = useState("07:00-15:00");
   const [weather, setWeather] = useState("חמים");
-  const [submittedBy, setSubmittedBy] = useState("");
+  const [submittedBy, setSubmittedBy] = useState(session?.user?.email ?? "");
   const [exceptionalEvents, setExceptionalEvents] = useState("אין");
   const [contractorNotes, setContractorNotes] = useState("אין");
   const [contractors, setContractors] = useState<ContractorRow[]>([
