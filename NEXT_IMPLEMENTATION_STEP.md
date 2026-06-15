@@ -1,156 +1,138 @@
 # NEXT_IMPLEMENTATION_STEP.md
-> Generated: 2026-06-15
-> Ordered by: MVP success criteria priority
-> Status: Active execution plan
+> Updated: 2026-06-15
+> Status: Code complete. External dependency blocks all further progress.
 
 ---
 
-## Priority Order (from MVP success criteria)
+## Current State
 
-| # | Goal | Blocker? | Status |
-|---|---|---|---|
-| 1 | Employees can log in | No (auth done) | ✅ Done |
-| 2 | Employees see only assigned work | YES — needs roles + RLS | 🔴 Next |
-| 3 | Managers/Admins see all data | YES — needs roles + RLS | 🔴 Next |
-| 4 | Sites are managed | No | ✅ Done |
-| 5 | Projects are managed | Partial — no create/edit UI | 🟡 In queue |
-| 6 | Tasks are managed | Done | ✅ Done |
-| 7 | Reporting works | Done (no PDF) | ✅ Done |
-| 8 | Management comments work | NO — not implemented | 🟡 In queue |
-| 9 | Executive dashboard works | Done | ✅ Done |
-| 10 | Excel export works | NO — placeholder | 🟡 In queue |
+All code is written, the build is clean, and all MVP features are implemented.
+
+The **only remaining blocker** is Supabase project credentials.
 
 ---
 
-## STEP 1 — Fix BUG-001: projectRepository siteId (IMMEDIATE)
+## MVP Feature Status (post-commit 8e708ba + fixes)
 
-**File:** `src/repositories/projectRepository.ts`
-**Effort:** 5 minutes
-**Risk:** None
-
-Add `site_id: input.siteId ?? null` to create() and update() in projectRepository.
-
----
-
-## STEP 2 — Add Create/Edit Project dialogs (HIGH)
-
-**File:** `src/routes/projects.index.tsx`
-**Effort:** 1–2 hours
-**Risk:** Low
-
-Add a create dialog and edit dialog to the projects list page, matching the pattern from issues.index.tsx or blockers.index.tsx.
+| # | Goal | Status |
+|---|---|---|
+| 1 | Employees can log in | ✅ Done |
+| 2 | Employees see only assigned work | ✅ Code done — pending migration 010+012 application |
+| 3 | Managers/Admins see all data | ✅ Code done — pending migration 010+012 application |
+| 4 | Sites are managed | ✅ Done |
+| 5 | Projects are managed | ✅ Done |
+| 6 | Tasks are managed | ✅ Done |
+| 7 | Reporting works | ✅ Done |
+| 8 | Management comments work | ✅ Done |
+| 9 | Executive dashboard works | ✅ Done |
+| 10 | Excel export works | ✅ Done |
 
 ---
 
-## STEP 3 — Migration 009: user_profile + roles (CRITICAL)
+## What the Product Owner Must Do Next
 
-**File:** `supabase/migrations/20260615000009_user_profile_roles.sql`
-**Effort:** 1 hour
-**Risk:** Medium (touches auth.users)
+### STEP 1 — Provide Supabase Credentials (REQUIRED)
 
-Create:
-- `user_profile` table with `id UUID REFERENCES auth.users(id)`
-- `role` column: `field_manager | company_manager | admin`
-- `full_name` TEXT
-- `is_admin()` helper function (SECURITY DEFINER)
-- `is_manager_or_admin()` helper function (SECURITY DEFINER)
-- `is_project_member(project_id UUID)` helper function (SECURITY DEFINER)
-- Trigger: auto-create user_profile row on auth.users INSERT
-- Add FK constraint to `project_member.user_id`
-- Add `assigned_to_user_id UUID` to `task` table (nullable, populate later)
+In Supabase Dashboard → Settings → API:
 
-**IMPORTANT:** After running this migration, create at least one admin user in Supabase Auth dashboard, then insert their user_profile with `role = 'admin'` BEFORE running Step 4.
-
----
-
-## STEP 4 — Migration 010: Strict Role-Based RLS (CRITICAL)
-
-**File:** `supabase/migrations/20260615000010_strict_rls.sql`
-**Effort:** 2 hours
-**Risk:** High (can lock users out if not done carefully)
-
-**PREREQUISITE:** Step 3 must be complete AND at least one admin row must exist in user_profile.
-
-Replace all 13 permissive `USING (true)` policies with:
-- admin: full access to all tables
-- company_manager: read all + write issues/blockers/decisions/reports/comments
-- field_manager: read own project data + write daily_logs/task_updates/issue_comments
-- All policies use `auth.uid()` via the helper functions
-
----
-
-## STEP 5 — Management Comments on Tasks (MEDIUM)
-
-**Files to create:** `supabase/migrations/20260615000011_task_comments.sql`
-**Files to update:** `src/routes/tasks.$taskId.tsx`, `src/repositories/taskRepository.ts`, `src/hooks/useTasks.ts`
-**Effort:** 2 hours
-
-Create `task_comment` table:
-```sql
-CREATE TABLE public.task_comment (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    task_id      UUID NOT NULL REFERENCES public.task(id) ON DELETE CASCADE,
-    author_id    UUID REFERENCES auth.users(id),
-    author_name  TEXT NOT NULL,
-    body         TEXT NOT NULL,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+```
+VITE_SUPABASE_URL=https://your-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Add UI in `tasks.$taskId.tsx` showing comments in a separate section below task_updates. Managers/admins can add comments. Field managers can read.
+Place in file: `project-pal/.env.local`
+
+### STEP 2 — Apply All Migrations
+
+In Supabase SQL Editor, run these files in order:
+
+```
+001 → 002 → 003 → 004 → 005 → 006 → 007 → 008 → 009
+```
+
+**STOP before 010.**
+
+### STEP 3 — Create Admin User
+
+In Supabase → Authentication → Users → Add user.
+
+Then in SQL Editor:
+```sql
+UPDATE public.user_profile
+SET role = 'admin', full_name = 'מנהל מערכת'
+WHERE id = 'THE-ADMIN-UUID-FROM-SUPABASE';
+```
+
+### STEP 4 — Apply Strict RLS
+
+```
+010 → 011 → 012
+```
+
+Migration 012 is critical — fixes a security gap where `project_member` had no RLS.
+
+### STEP 5 — Create Employee Users
+
+In Supabase Auth, create accounts for each field_manager.
+Add them to projects via `project_member` table.
+
+### STEP 6 — Link Task Assignments
+
+```sql
+UPDATE public.task
+SET assigned_to_user_id = 'EMPLOYEE-UUID'
+WHERE assigned_to = 'יוסי כהן';
+```
+
+### STEP 7 — Run QA
+
+1. Log in as admin → all routes load → data visible
+2. Log in as company_manager → all data, cannot manage sites
+3. Log in as field_manager → only assigned projects visible
+4. Submit a daily log as field_manager
+5. Add management comment on task as manager
+6. Export a report as CSV
+7. Check Hebrew RTL rendering throughout
 
 ---
 
-## STEP 6 — Issue Comments UI (MEDIUM)
+## Migration Files Summary
 
-**File:** `src/routes/issues.index.tsx` or new `src/routes/issues.$issueId.tsx`
-**Effort:** 1–2 hours
-
-The `issue_comment` table exists and is fetched by issueRepository. Build the UI:
-- Show comment thread in issue detail
-- Add comment form for managers/employees
-- Hebrew labels
-
----
-
-## STEP 7 — Pre-fill submittedBy from auth session (MEDIUM)
-
-**Files:** `src/routes/daily-logs.new.tsx`, `src/hooks/useAuth.ts`
-**Effort:** 30 minutes
-
-Use `session.user.email` or (once user_profile exists) `user_profile.full_name` to pre-fill the `submittedBy` field in daily log creation. Field remains editable.
+| File | Status |
+|---|---|
+| `20260615000001_create_tables.sql` | Written ✓ |
+| `20260615000002_create_views.sql` | Written ✓ |
+| `20260615000003_create_triggers.sql` | Written ✓ |
+| `20260615000004_seed_data.sql` | Written ✓ |
+| `20260615000005_add_site_table.sql` | Written ✓ |
+| `20260615000006_add_task_tables.sql` | Written ✓ |
+| `20260615000007_add_rls_auth.sql` | Written ✓ |
+| `20260615000008_seed_sites_tasks.sql` | Written ✓ |
+| `20260615000009_user_profile_roles.sql` | Written ✓ |
+| `20260615000010_strict_rls.sql` | Written ✓ |
+| `20260615000011_task_comments.sql` | Written ✓ |
+| `20260615000012_project_member_rls.sql` | Written ✓ (new — security fix) |
 
 ---
 
-## STEP 8 — Create/Edit Project dialogs (see STEP 2)
+## What Happens After Credentials Are Provided
+
+With credentials in `.env.local` and migrations applied:
+
+1. `npm run dev` → app connects to real Supabase
+2. Login page works immediately
+3. Seed data from migrations 004 + 008 is visible
+4. All features operational
+
+No further code changes required for MVP.
 
 ---
 
-## STEP 9 — Excel Export (LOW)
+## Deferred (Post-MVP)
 
-**Files:** `src/routes/reports.index.tsx`
-**Effort:** 2–3 hours
-**Package:** `xlsx` (already common in this stack, no new dep if available; else `exceljs`)
-
-Implement:
-1. Aggregate daily logs for selected project+date range
-2. Generate `.xlsx` with columns: Date, Project, Workers, Equipment, Work Description, Weather
-3. Trigger download via Blob URL
-4. Remove "בפיתוח" placeholder from Excel button
-
----
-
-## STEP 10 — Final QA Pass
-
-1. All routes render correctly with real Supabase data
-2. Employee login → sees only assigned projects and tasks
-3. Manager login → sees all data
-4. Admin login → can manage users and sites
-5. Daily log → report flow works end-to-end
-6. Task → task_update → progress reflects correctly
-7. Executive dashboard KPIs are correct
-8. Hebrew RTL renders correctly throughout
-
----
-
-## Current Active Step: STEP 1 (fix BUG-001) → then STEP 2 (project create/edit) → then STEP 3 (roles migration)
+- PDF export
+- Photo upload (Supabase Storage bucket)
+- Real-time notifications (Supabase Realtime)
+- Bundle size optimization (Recharts code-split)
+- Delete operations with confirmation dialogs
+- Pagination for large datasets

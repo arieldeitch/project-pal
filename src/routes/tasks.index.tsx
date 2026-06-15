@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, CheckSquare, User, Calendar } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useTasks, useCreateTask, useUpdateTask } from "@/hooks/useTasks";
+import { useTasks, useCreateTask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useProjects";
 import { taskStatusLabel, taskPriorityLabel } from "@/lib/mock-data";
 import type { TaskStatus, TaskPriority } from "@/lib/mock-data";
@@ -29,7 +29,6 @@ function TasksPage() {
   const { data: tasks, isLoading, error } = useTasks();
   const { data: projects } = useProjects();
   const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
 
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");

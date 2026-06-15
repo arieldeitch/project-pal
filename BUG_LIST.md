@@ -1,147 +1,109 @@
 # BUG_LIST.md
-> Generated: 2026-06-15
+> Updated: 2026-06-15
 > Source: Static code review + migration analysis
 > Severity: CRITICAL > HIGH > MEDIUM > LOW
 
 ---
 
-## BUG-001 — CRITICAL: projectRepository missing siteId in create/update
+## BUG-001 — ✅ RESOLVED: projectRepository missing siteId in create/update
 
 **File:** `src/repositories/projectRepository.ts`
-**Severity:** CRITICAL
-**Impact:** Sites cannot be associated with projects through the UI. Assigning a project to a site silently drops the siteId.
-
-**Root cause:** The `create()` and `update()` methods were not updated when `siteId` was added to the `Project` type.
-
-**Current code (create):**
-```typescript
-.insert({
-  name: input.name, address: input.address, client: input.client,
-  manager: input.manager, status: input.status,
-  start_date: input.startDate, target_date: input.targetDate,
-  // ❌ MISSING: site_id: input.siteId ?? null
-})
-```
-
-**Fix:** Add `site_id: input.siteId ?? null` to both `create()` and `update()` patch.
-**Status:** OPEN — fix in progress
+**Severity:** CRITICAL → **RESOLVED**
+**Fix applied:** Added `site_id: input.siteId ?? null` to `create()` and `if (input.siteId !== undefined) patch.site_id = input.siteId ?? null` to `update()`.
 
 ---
 
-## BUG-002 — HIGH: No Create/Edit Project UI
+## BUG-002 — ✅ RESOLVED: No Create/Edit Project UI
 
 **File:** `src/routes/projects.index.tsx`
-**Severity:** HIGH
-**Impact:** Users cannot create or edit projects from the UI. The `useCreateProject` and `useUpdateProject` hooks exist but are not wired to any dialog.
-
-**Fix:** Add create + edit dialogs to projects.index.tsx.
-**Status:** OPEN
+**Severity:** HIGH → **RESOLVED**
+**Fix applied:** Full create dialog and edit dialog (pencil button per row) with site dropdown. Uses `useCreateProject`, `useUpdateProject`, `useSites`.
 
 ---
 
-## BUG-003 — HIGH: task.assigned_to is TEXT, not linked to auth.users
+## BUG-003 — ✅ ADDRESSED: task.assigned_to is TEXT, not linked to auth.users
 
-**File:** `supabase/migrations/20260615000006_add_task_tables.sql`, `src/repositories/taskRepository.ts`
-**Severity:** HIGH
-**Impact:** Employee task filtering ("show me only my tasks") is impossible. Text field cannot be used for RLS.
-
-**Fix:** Add `assigned_to_user_id UUID REFERENCES auth.users(id)` column to `task` table. Keep TEXT field for display name until full profile system is in place.
-**Status:** OPEN — blocked on user_profile implementation
+**File:** `supabase/migrations/20260615000009_user_profile_roles.sql`
+**Severity:** HIGH → **ADDRESSED**
+**Fix applied:** Migration 009 adds `assigned_to_user_id UUID REFERENCES auth.users(id)`. TEXT field `assigned_to` preserved for display. UUID field used for RLS enforcement.
+**Remaining:** Real auth.users UUIDs must be populated after creating users in Supabase dashboard. See `SUPABASE_DEPLOYMENT_CHECKLIST.md` Part 4.
 
 ---
 
-## BUG-004 — HIGH: project_member.user_id has no FK to auth.users
+## BUG-004 — ✅ ADDRESSED: project_member.user_id has no FK to auth.users
 
-**File:** `supabase/migrations/20260615000001_create_tables.sql`
-**Severity:** HIGH
-**Impact:** Project membership cannot be enforced. Seed data uses placeholder UUIDs that don't exist in auth.users.
-
-**Fix:** Apply FK constraint via migration 009. Requires real auth.users rows to exist first.
-**Status:** OPEN — blocked on Supabase project credentials
+**File:** `supabase/migrations/20260615000009_user_profile_roles.sql`
+**Severity:** HIGH → **ADDRESSED**
+**Fix applied:** Migration 009 deletes placeholder UUIDs from seed data and adds `FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE`.
+**Remaining:** Requires applying migration 009 with real Supabase credentials.
 
 ---
 
-## BUG-005 — MEDIUM: No user_profile table — roles cannot be checked
+## BUG-005 — ✅ RESOLVED: No user_profile table
 
-**Severity:** MEDIUM
-**Impact:** Role-based RLS cannot be implemented. All authenticated users are treated equally.
-
-**Fix:** Create `user_profile` table with FK to `auth.users(id)` and role column.
-**Status:** OPEN
+**Severity:** MEDIUM → **RESOLVED**
+**Fix applied:** Migration 009 creates `user_profile` table with role CHECK, auto-create trigger on auth.users INSERT, and SECURITY DEFINER helper functions (`is_admin`, `is_manager_or_admin`, `is_project_member`).
 
 ---
 
-## BUG-006 — MEDIUM: Issue comments have no UI
+## BUG-006 — ✅ RESOLVED: Issue comments have no UI
 
-**File:** `src/routes/issues.index.tsx`, `src/routes/projects.$projectId.tsx`
-**Severity:** MEDIUM
-**Impact:** Issue comments exist in the database (`issue_comment` table with 10 seed rows) and are fetched in `issueRepository.ts`, but there is no UI to read or write them.
-
-**Fix:** Add comment section to issue detail view (or expand issue dialog).
-**Status:** OPEN
+**File:** `src/routes/issues.index.tsx`
+**Severity:** MEDIUM → **RESOLVED**
+**Fix applied:** `IssueComments` component added: expandable per-card thread, shows existing comments, inline add-comment form with Send button. Uses `useAddIssueComment` + `useSession`.
 
 ---
 
-## BUG-007 — MEDIUM: Management comments on tasks not implemented
+## BUG-007 — ✅ RESOLVED: Management comments on tasks not implemented
 
-**Severity:** MEDIUM
-**Impact:** Managers cannot add feedback/comments on task updates. The `task_update` table is employee-only. No `task_comment` table exists for management review.
-
-**Fix:** Add `task_comment` table for manager/admin comments on tasks, plus UI in tasks.$taskId.tsx.
-**Status:** OPEN
+**Severity:** MEDIUM → **RESOLVED**
+**Fix applied:** Migration 011 creates `task_comment` table. `taskRepository.addComment()` and `useAddTaskComment()` added. Task detail page (`tasks.$taskId.tsx`) shows amber-styled management comments section with form.
 
 ---
 
-## BUG-008 — MEDIUM: submittedBy in daily logs is free text, not linked to auth user
+## BUG-008 — ✅ RESOLVED: submittedBy in daily logs and task updates is free text
 
-**Files:** `src/routes/daily-logs.new.tsx`, `src/repositories/dailyLogRepository.ts`
-**Severity:** MEDIUM
-**Impact:** No way to auto-populate submittedBy from auth session. Employee can submit as any name.
-
-**Fix:** Pre-fill `submittedBy` from `session.user.email` or `user_profile.full_name` in the daily log creation form.
-**Status:** OPEN — depends on user_profile
+**Files:** `src/routes/daily-logs.new.tsx`, `src/routes/tasks.$taskId.tsx`
+**Severity:** MEDIUM → **RESOLVED**
+**Fix applied:** Both forms now pre-fill `submittedBy` from `session?.user?.email ?? ""`. Field remains editable.
 
 ---
 
-## BUG-009 — LOW: v_missing_daily_logs view will become stale after seed dates pass
+## BUG-009 — INFORMATIONAL: v_missing_daily_logs view becomes stale after seed dates
 
-**File:** `supabase/migrations/20260615000002_create_views.sql`
-**Severity:** LOW
-**Impact:** Once today's date passes the latest seed log date (2026-06-15), all active projects will show as "missing logs today" indefinitely until real logs are created.
-
-**Fix:** Not a code bug — expected behavior. Resolved by creating real daily logs.
-**Status:** INFORMATIONAL
+**Severity:** LOW (informational)
+**Status:** Expected behavior — resolved by creating real daily logs.
 
 ---
 
-## BUG-010 — LOW: CRLF lint warnings in Windows environment
+## BUG-010 — NON-BLOCKING: CRLF lint warnings on Windows
 
 **Severity:** LOW
-**Impact:** `npm run lint` exits with code 1 due to prettier CRLF warnings. Not real errors.
-
-**Fix:** `npm run format` normalizes line endings.
-**Status:** NON-BLOCKING
+**Status:** Run `npm run format` to normalize. Non-blocking.
 
 ---
 
-## BUG-011 — LOW: Excel export is a placeholder
+## BUG-011 — ✅ RESOLVED: Excel export was a placeholder
 
 **File:** `src/routes/reports.index.tsx`
-**Severity:** LOW (per MVP priority order — Excel is item #9)
-**Impact:** Excel button shows toast "ייצוא Excel - בפיתוח" with no functionality.
-
-**Fix:** Implement ExcelJS export.
-**Status:** OPEN — in implementation queue
+**Severity:** LOW → **RESOLVED**
+**Fix applied:** `src/lib/csv-export.ts` — zero-dependency CSV with UTF-8 BOM for Hebrew Excel compatibility. Bulk export and per-report export both implemented. `xlsx` package (5 HIGH vulnerabilities) was installed then immediately uninstalled; replaced with native solution.
 
 ---
 
-## BUG-012 — LOW: Large bundle chunks
+## BUG-012 — DEFERRED: Large bundle chunks
 
 **Severity:** LOW
-**Impact:** index.js ~780KB, executive.js ~410KB (gzip: 231KB, 111KB). Performance concern for mobile field workers on slow connections.
+**Status:** Deferred to Phase 5 hardening. index.js ~780KB (gzip ~231KB). Code-split Recharts.
 
-**Fix:** Code-split Recharts with dynamic import. Not MVP-blocking.
-**Status:** DEFERRED to Phase 5 hardening
+---
+
+## BUG-013 — ✅ RESOLVED: project_member table had no RLS
+
+**File:** `supabase/migrations/20260615000012_project_member_rls.sql`
+**Severity:** HIGH (security gap) → **RESOLVED**
+**Root cause:** Migrations 007 and 010 both missed `project_member` when enabling RLS. Any authenticated user could read, insert, update, or delete project memberships.
+**Fix applied:** Migration 012 enables RLS on `project_member` and creates four policies: `pm_select` (own rows or manager+), `pm_insert_manager`, `pm_update_admin`, `pm_delete_admin`.
 
 ---
 
@@ -149,8 +111,9 @@
 
 | Priority | Count | Bugs |
 |---|---|---|
-| CRITICAL | 1 | BUG-001 |
-| HIGH | 3 | BUG-002, BUG-003, BUG-004 |
-| MEDIUM | 4 | BUG-005, BUG-006, BUG-007, BUG-008 |
-| LOW | 4 | BUG-009, BUG-010, BUG-011, BUG-012 |
-| **TOTAL** | **12** | |
+| ✅ RESOLVED | 8 | BUG-001, BUG-002, BUG-005, BUG-006, BUG-007, BUG-008, BUG-011, BUG-013 |
+| ✅ ADDRESSED (pending infra) | 2 | BUG-003, BUG-004 |
+| INFORMATIONAL | 1 | BUG-009 |
+| NON-BLOCKING | 1 | BUG-010 |
+| DEFERRED | 1 | BUG-012 |
+| **OPEN BLOCKERS** | **0** | All code-fixable issues resolved |

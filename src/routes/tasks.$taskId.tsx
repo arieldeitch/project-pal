@@ -34,7 +34,7 @@ function TaskDetailPage() {
   const addComment = useAddTaskComment();
   const { session } = useSession();
 
-  const [updateForm, setUpdateForm] = useState({ submittedBy: "", content: "", progressAfter: 0 });
+  const [updateForm, setUpdateForm] = useState({ submittedBy: session?.user?.email ?? "", content: "", progressAfter: 0 });
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [commentBody, setCommentBody] = useState("");
 
@@ -55,7 +55,7 @@ function TaskDetailPage() {
         onSuccess: () => {
           toast.success("העדכון נשמר בהצלחה");
           setShowUpdateForm(false);
-          setUpdateForm({ submittedBy: "", content: "", progressAfter: task!.progress });
+          setUpdateForm({ submittedBy: session?.user?.email ?? "", content: "", progressAfter: task!.progress });
         },
         onError: () => toast.error("שגיאה בשמירת העדכון"),
       },
