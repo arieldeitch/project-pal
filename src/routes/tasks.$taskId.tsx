@@ -9,7 +9,9 @@ import { taskStatusLabel, taskPriorityLabel } from "@/lib/mock-data";
 import type { TaskStatus, TaskPriority } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/tasks/$taskId")({
+  head: () => ({ meta: [{ title: "משימה - מהיסוד" }] }),
   component: TaskDetailPage,
+  notFoundComponent: () => <div className="text-center text-muted-foreground">המשימה לא נמצאה</div>,
 });
 
 const statusColors: Record<TaskStatus, string> = {

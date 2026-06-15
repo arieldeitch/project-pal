@@ -6,7 +6,9 @@ import { siteStatusLabel, siteTypeLabel, projectStatusLabel } from "@/lib/mock-d
 import type { SiteStatus } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/sites/$siteId")({
+  head: () => ({ meta: [{ title: "אתר - מהיסוד" }] }),
   component: SiteDetailPage,
+  notFoundComponent: () => <div className="text-center text-muted-foreground">האתר לא נמצא</div>,
 });
 
 const statusColors: Record<SiteStatus, string> = {

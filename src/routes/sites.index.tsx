@@ -7,6 +7,7 @@ import { siteStatusLabel, siteTypeLabel } from "@/lib/mock-data";
 import type { SiteStatus, SiteType } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/sites/")({
+  head: () => ({ meta: [{ title: "אתרים - מהיסוד" }] }),
   component: SitesPage,
 });
 

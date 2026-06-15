@@ -8,6 +8,7 @@ import { taskStatusLabel, taskPriorityLabel } from "@/lib/mock-data";
 import type { TaskStatus, TaskPriority } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/tasks/")({
+  head: () => ({ meta: [{ title: "משימות - מהיסוד" }] }),
   component: TasksPage,
 });
 
