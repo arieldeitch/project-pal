@@ -21,9 +21,12 @@ export const Route = createFileRoute("/blockers/")({
 });
 
 function BlockersPage() {
-  const { data: blockers = [] } = useBlockers();
+  const { data: blockers = [], isLoading, error } = useBlockers();
   const { data: projects = [] } = useProjects();
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
+
+  if (isLoading) return <div className="py-16 text-center text-muted-foreground">טוען חסמים...</div>;
+  if (error) return <div className="py-16 text-center text-destructive">שגיאה בטעינת החסמים</div>;
 
   return (
     <div className="space-y-6">

@@ -83,10 +83,13 @@ function IssueComments({ issue }: { issue: Issue }) {
 }
 
 function IssuesPage() {
-  const { data: issues = [] } = useIssues();
+  const { data: issues = [], isLoading, error } = useIssues();
   const { data: projects = [] } = useProjects();
   const updateIssue = useUpdateIssue();
   const [filter, setFilter] = useState<"all" | "open" | "critical">("all");
+
+  if (isLoading) return <div className="py-16 text-center text-muted-foreground">טוען ליקויים...</div>;
+  if (error) return <div className="py-16 text-center text-destructive">שגיאה בטעינת הליקויים</div>;
 
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
   const filtered = issues.filter((i) => {

@@ -34,11 +34,15 @@ function StatCard({ title, value, icon: Icon, tone, hint }: { title: string; val
 }
 
 function Dashboard() {
-  const { data: projects = [] } = useProjects();
-  const { data: dailyLogs = [] } = useDailyLogs();
+  const { data: projects = [], isLoading: loadingProjects } = useProjects();
+  const { data: dailyLogs = [], isLoading: loadingLogs } = useDailyLogs();
   const { data: issues = [] } = useIssues();
   const { data: blockers = [] } = useBlockers();
   const { data: decisions = [] } = useDecisions();
+
+  const isLoading = loadingProjects || loadingLogs;
+
+  if (isLoading) return <div className="py-16 text-center text-muted-foreground">טוען דשבורד...</div>;
 
   const today = new Date().toISOString().slice(0, 10);
   const activeProjects = projects.filter((p) => p.status === "active");

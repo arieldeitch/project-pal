@@ -21,9 +21,12 @@ export const Route = createFileRoute("/decisions/")({
 });
 
 function DecisionsPage() {
-  const { data: decisions = [] } = useDecisions();
+  const { data: decisions = [], isLoading, error } = useDecisions();
   const { data: projects = [] } = useProjects();
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "—";
+
+  if (isLoading) return <div className="py-16 text-center text-muted-foreground">טוען החלטות...</div>;
+  if (error) return <div className="py-16 text-center text-destructive">שגיאה בטעינת ההחלטות</div>;
 
   return (
     <div className="space-y-6">

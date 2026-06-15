@@ -31,12 +31,14 @@ function Stat({ title, value, icon: Icon, tone }: { title: string; value: number
 }
 
 function Executive() {
-  const { data: projects = [] } = useProjects();
-  const { data: dailyLogs = [] } = useDailyLogs();
+  const { data: projects = [], isLoading: loadingProjects } = useProjects();
+  const { data: dailyLogs = [], isLoading: loadingLogs } = useDailyLogs();
   const { data: issues = [] } = useIssues();
   const { data: blockers = [] } = useBlockers();
   const { data: decisions = [] } = useDecisions();
   const { data: reports = [] } = useReports();
+
+  if (loadingProjects || loadingLogs) return <div className="py-16 text-center text-muted-foreground">טוען נתונים...</div>;
 
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); })();

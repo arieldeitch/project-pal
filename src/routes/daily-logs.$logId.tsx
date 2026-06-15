@@ -56,7 +56,7 @@ function DailyLogDetail() {
             <FileText className="ml-2 h-4 w-4" />צור דוח
           </Button>
           <Button variant="outline" onClick={() => toast.info("ייצוא PDF - בפיתוח")}><Download className="ml-2 h-4 w-4" />PDF</Button>
-          <Button variant="outline" onClick={() => toast.info("נשלח ללקוח (דמה)")}><Send className="ml-2 h-4 w-4" />שליחה ללקוח</Button>
+          <Button variant="outline" onClick={() => toast.info("שליחה ללקוח — תכונה זו בפיתוח")}><Send className="ml-2 h-4 w-4" />שליחה ללקוח</Button>
         </div>
       </div>
 
