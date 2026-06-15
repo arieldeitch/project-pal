@@ -127,10 +127,13 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 // Bypass auth when Supabase credentials are not yet configured.
+// Accepts both legacy JWT keys (eyJ...) and new publishable keys (sb_publishable_ / sb_secret_).
 // When both env vars are real values, normal auth enforcement is restored automatically.
+const _anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 const DEV_BYPASS =
   !import.meta.env.VITE_SUPABASE_URL?.includes(".supabase.co") ||
-  !import.meta.env.VITE_SUPABASE_ANON_KEY?.startsWith("eyJ");
+  _anonKey.length < 20 ||
+  _anonKey === "your-anon-key-here";
 
 function AuthGate() {
   const { session, loading } = useAuthContext();
