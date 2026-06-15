@@ -1,7 +1,8 @@
 # Master Summary — Mehayesod Platform Architecture
 
-> Version 1.0 | 2026-06-14
+> Version 1.1 | 2026-06-15
 > Prepared by: Lead Software Architect
+> Updated after formal architecture review: decisions 3 and 11–14 added/revised.
 
 ---
 
@@ -46,11 +47,11 @@ Database enforces `UNIQUE (project_id, date)` on the `daily_log` table. This is 
 
 **Why:** Duplicate logs would corrupt report generation and double-count contractor hours and workforce numbers.
 
-### Decision 3: Polymorphic Photos and Comments
+### Decision 3: Typed Nullable FKs for Photos (RC-01 — revised from v1.0)
 
-`photo` and `comment` tables use `entity_type + entity_id` instead of multiple nullable FK columns.
+`photo` table uses two nullable FK columns (`daily_log_id`, `issue_id`) with a CHECK constraint enforcing exactly one non-null. The original polymorphic `entity_type + entity_id` pattern was removed.
 
-**Why:** Photos can attach to daily logs, issues, and (future) decisions. A polymorphic pattern allows adding new attachable entity types without schema changes. Trade-off: no DB-level FK constraint; application layer enforces integrity.
+**Why:** Supabase PostgREST requires real FK constraints to resolve table relationships in auto-join queries. The polymorphic pattern breaks all PostgREST joins on photos — including the report assembly query — causing a runtime error. Typed FKs restore PostgREST join capability, enable ON DELETE CASCADE (eliminating orphaned photos), and allow RLS policies to authorize photo access through the parent entity's FK. Adding a new photo parent type in Phase 2 is a one-line `ALTER TABLE ADD COLUMN` migration.
 
 ### Decision 4: Text Over Enum for Status Columns
 
@@ -94,6 +95,30 @@ Supabase project hosted in `eu-central-1` (Frankfurt).
 
 **Why:** Lowest latency from Israel. Israeli data privacy law (Privacy Protection Law 5741-1981) allows storage in EU under GDPR-equivalent frameworks.
 
+### Decision 11: ON DELETE CASCADE on Report → DailyLog FK (RC-02)
+
+When a daily log is deleted, its associated `draft` or `ready` report is cascade-deleted. A separate BEFORE DELETE trigger blocks deletion of any log whose report has been marked `sent`.
+
+**Why:** The original ON DELETE SET NULL created permanently unrenderable orphan reports. CASCADE is the correct behavior for unsent reports — they are work-in-progress tied to their log. The trigger enforces the critical legal invariant (sent reports = immutable legal documents) without conflating it with the normal delete flow.
+
+### Decision 12: Aggregate Report Deduplication by Partial Unique Index (RC-03)
+
+A partial unique index on `report(project_id, type, date) WHERE type IN ('weekly','monthly')` prevents duplicate weekly and monthly reports per project.
+
+**Why:** The existing `UNIQUE(daily_log_id)` handles daily report deduplication via FK. Aggregate reports have no source log FK — they need their own uniqueness constraint on the (project, type, period) tuple.
+
+### Decision 13: `project_member` Table as Auth Foundation (RC-04)
+
+A `project_member` junction table (project_id, user_id, role) is created now, before authentication is implemented. The `auth.users` FK constraint is added in Phase 3.
+
+**Why:** RLS policies cannot safely read project assignments from JWT claims — JWTs are issued at login and go stale between refreshes. The `project_member` table is the live source of truth. Creating it now makes Phase 3 auth a two-step migration (add FK, write RLS) rather than a simultaneous schema-change-plus-policy rewrite. The table also models multi-PM projects correctly — the current `project.manager` text field cannot represent more than one person.
+
+### Decision 14: Human-Readable Log Numbers (RA-05)
+
+`daily_log.log_number` is an integer auto-incremented per project by a BEFORE INSERT trigger. The display format `LOG-YYYY-NNNNNN` is computed at the API layer from the log's date and the stored integer.
+
+**Why:** The paper diary system uses sequential log numbers in contracts, site meetings, and legal documents ("per Daily Log #47..."). UUIDs cannot fulfill this function. Storing only the integer avoids computed-string storage while preserving the full display format flexibility.
+
 ---
 
 ## Document Index
@@ -110,6 +135,9 @@ Supabase project hosted in `eu-central-1` (Frankfurt).
 | `docs/08-file-storage-strategy.md` | Photo storage, PDF storage, naming conventions, retention |
 | `docs/09-mvp-gap-analysis.md` | Gap analysis ranked Critical/High/Medium/Low |
 | `docs/10-implementation-roadmap.md` | 5-phase execution plan with day-by-day schedule |
+| `docs/ARCHITECTURE_REVIEW.md` | Formal pre-implementation review — findings and verdict |
+| `docs/ARCHITECTURE_CHANGES.md` | Change log for all RC and RA corrections applied post-review |
+| `docs/IMPLEMENTATION_APPROVAL.md` | Final approval verdict for migration start |
 
 ---
 
@@ -136,14 +164,17 @@ supabase migration new create_project
 supabase db push
 ```
 
-**The order matters:**
-1. Create `project` table first (no dependencies).
-2. Create `daily_log` (depends on `project`).
-3. Create `contractor_row` and `equipment_row` (depend on `daily_log`).
-4. Create `photo` (polymorphic — no FK, can go anywhere).
-5. Create `report` (depends on `project` and `daily_log`).
-6. Create `issue`, `comment`, `blocker`, `decision` (depend on `project`).
-7. Add triggers and views last.
+**The order matters (updated after RC-01 — issue must precede photo):**
+1. `project`
+2. `daily_log` (FK → project)
+3. `project_member` (FK → project; no auth.users FK yet)
+4. `contractor_row`, `equipment_row` (FK → daily_log)
+5. `issue` (FK → project, daily_log) ← must come before photo
+6. `photo` (FK → daily_log AND issue)
+7. `issue_comment` (FK → issue)
+8. `blocker`, `decision` (FK → project)
+9. `report` (FK → project, daily_log)
+10. Triggers, views, seed data
 
 **The single most important thing to get right on Day 1:**
 The `UNIQUE (project_id, date)` constraint on `daily_log`. Everything else can be fixed later. If this constraint is missing, duplicate logs will corrupt the entire system.

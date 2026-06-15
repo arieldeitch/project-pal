@@ -1,6 +1,7 @@
 # Entity Relationship Diagram — Mehayesod Platform
 
-> Version 1.0 | 2026-06-14
+> Version 1.1 | 2026-06-15
+> Changes from v1.0: RC-01 (photo typed FKs, comment renamed), RC-03 (report uniqueness note), RC-04 (project_member), RA-01 (resolved_at), RA-02 (discovered_in_log_id), RA-05 (log_number)
 
 ---
 
@@ -26,6 +27,7 @@ erDiagram
         uuid id PK
         uuid project_id FK
         date date
+        integer log_number
         text work_hours
         text weather
         text submitted_by
@@ -34,6 +36,14 @@ erDiagram
         jsonb work_description
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    PROJECT_MEMBER {
+        uuid id PK
+        uuid project_id FK
+        uuid user_id
+        text role
+        timestamptz created_at
     }
 
     CONTRACTOR_ROW {
@@ -55,32 +65,10 @@ erDiagram
         integer sort_order
     }
 
-    PHOTO {
-        uuid id PK
-        text entity_type
-        uuid entity_id
-        text storage_key
-        text caption
-        text work_item
-        text area
-        text uploaded_by
-        timestamptz uploaded_at
-    }
-
-    REPORT {
-        uuid id PK
-        uuid project_id FK
-        uuid daily_log_id FK
-        text type
-        date date
-        text status
-        timestamptz sent_at
-        timestamptz created_at
-    }
-
     ISSUE {
         uuid id PK
         uuid project_id FK
+        uuid discovered_in_log_id FK
         text title
         text location
         text description
@@ -89,14 +77,26 @@ erDiagram
         date due_date
         text severity
         text status
+        timestamptz resolved_at
         timestamptz created_at
         timestamptz updated_at
     }
 
-    COMMENT {
+    PHOTO {
         uuid id PK
-        text entity_type
-        uuid entity_id
+        uuid daily_log_id FK
+        uuid issue_id FK
+        text storage_key
+        text caption
+        text work_item
+        text area
+        text uploaded_by
+        timestamptz uploaded_at
+    }
+
+    ISSUE_COMMENT {
+        uuid id PK
+        uuid issue_id FK
         text author
         text body
         timestamptz created_at
@@ -112,6 +112,7 @@ erDiagram
         date due_date
         text priority
         text status
+        timestamptz resolved_at
         timestamptz created_at
         timestamptz updated_at
     }
@@ -129,83 +130,101 @@ erDiagram
         timestamptz updated_at
     }
 
-    PROJECT ||--o{ DAILY_LOG        : "has"
-    PROJECT ||--o{ ISSUE            : "has"
-    PROJECT ||--o{ BLOCKER          : "has"
-    PROJECT ||--o{ DECISION         : "has"
-    PROJECT ||--o{ REPORT           : "has"
+    REPORT {
+        uuid id PK
+        uuid project_id FK
+        uuid daily_log_id FK
+        text type
+        date date
+        text status
+        timestamptz sent_at
+        text pdf_storage_key
+        timestamptz pdf_generated_at
+        timestamptz created_at
+    }
 
-    DAILY_LOG ||--o{ CONTRACTOR_ROW : "lists"
-    DAILY_LOG ||--o{ EQUIPMENT_ROW  : "lists"
-    DAILY_LOG |o--o| REPORT         : "generates"
+    PROJECT          ||--o{ DAILY_LOG      : "has"
+    PROJECT          ||--o{ PROJECT_MEMBER : "has members"
+    PROJECT          ||--o{ ISSUE          : "has"
+    PROJECT          ||--o{ BLOCKER        : "has"
+    PROJECT          ||--o{ DECISION       : "has"
+    PROJECT          ||--o{ REPORT         : "has"
 
-    ISSUE     ||--o{ COMMENT        : "has"
+    DAILY_LOG        ||--o{ CONTRACTOR_ROW : "lists"
+    DAILY_LOG        ||--o{ EQUIPMENT_ROW  : "lists"
+    DAILY_LOG        |o--o| REPORT         : "generates"
+    DAILY_LOG        |o--o{ ISSUE          : "discovered in"
+    DAILY_LOG        ||--o{ PHOTO          : "has photos"
+
+    ISSUE            ||--o{ PHOTO          : "has photos"
+    ISSUE            ||--o{ ISSUE_COMMENT  : "has comments"
 ```
 
-> **Note on polymorphic relationships:** `PHOTO` and `COMMENT` use a polymorphic pattern
-> (`entity_type` + `entity_id`) rather than foreign keys. This avoids multiple nullable FK columns
-> and makes adding new attachable entities straightforward. The trade-off is that database-level FK
-> constraints cannot be enforced directly — application and RLS policies must enforce integrity.
+> **RC-01 change:** `PHOTO` and `ISSUE_COMMENT` (formerly `COMMENT`) no longer use a polymorphic
+> `entity_type + entity_id` pattern. Both tables now use direct typed FK columns. This enables
+> PostgREST auto-joins, DB-level cascade deletes, and RLS authorization paths through the FK.
+>
+> **RC-04 change:** `PROJECT_MEMBER` added as a new entity for future authentication scoping.
 
 ---
 
 ## 2. Relationship Explanations
 
 ### 2.1 Project → Daily Log (1:many)
+Each active Project produces one Daily Log per calendar day. Uniqueness enforced by `UNIQUE (project_id, date)`.
 
-Each Project has zero or more Daily Logs. In practice, an `active` project should have one log per calendar day. The uniqueness of (project_id, date) is enforced by a unique index.
+### 2.2 Project → Project Member (1:many)
+A project has one or more team members. Each member has a role (`field_manager`, `company_manager`, `admin`, `viewer`). Used for Phase 3 RLS scoping — replaces the JWT `project_ids` claim approach.
 
-### 2.2 Project → Issue (1:many)
+### 2.3 Project → Issue (1:many)
+Issues are quality defects scoped to a single project.
 
-Issues are scoped to a single project. An issue cannot belong to multiple projects. Cross-project issues do not exist in this domain.
+### 2.4 Project → Blocker (1:many)
+Blockers are management-level impediments scoped to a single project.
 
-### 2.3 Project → Blocker (1:many)
+### 2.5 Project → Decision (1:many)
+Management approvals tied to a project context.
 
-Blockers are project-scoped impediments. Same scoping rule as Issues.
+### 2.6 Project → Report (1:many)
+Reports belong to a project. Metadata-only; content assembled from source daily log at render time.
 
-### 2.4 Project → Decision (1:many)
+### 2.7 Daily Log → ContractorRow (1:many)
+Ordered list of contractors on site. `sort_order` preserves the paper diary order.
 
-Decisions are management approvals tied to a specific project context.
+### 2.8 Daily Log → EquipmentRow (1:many)
+Ordered list of equipment used. Same ordering convention.
 
-### 2.5 Project → Report (1:many)
+### 2.9 Daily Log → Report (1:0 or 1)
+A Daily Log generates at most one daily Report. Enforced by `UNIQUE (daily_log_id)` on the `report` table. `ON DELETE CASCADE` — deleting a log (only possible if report is not `sent`) removes the associated draft/ready report.
 
-Reports belong to a project. The Report table stores metadata only; content is assembled from the source Daily Log at render time.
+### 2.10 Daily Log → Issue (1:many via `discovered_in_log_id`)
+An issue may reference the daily log in which it was first observed. Optional, nullable FK. `ON DELETE SET NULL` — the issue persists if the source log is deleted. This enables "issues discovered today" in daily reports.
 
-### 2.6 Daily Log → ContractorRow (1:many)
+### 2.11 Daily Log → Photo (1:many via `photo.daily_log_id`)
+Photos taken on site are attached to their source log. `ON DELETE CASCADE` — deleting a log removes its photos (after confirming the report is not `sent`).
 
-Each daily log contains multiple contractor entries. `sort_order` preserves the order in which contractors appear in the log (matches the original paper diary format).
+### 2.12 Issue → Photo (1:many via `photo.issue_id`)
+Photos documenting a field defect. `ON DELETE CASCADE` — deleting an issue removes its photos.
 
-### 2.7 Daily Log → EquipmentRow (1:many)
+### 2.13 Issue → IssueComment (1:many)
+Discussion thread on an issue. `ON DELETE CASCADE` — deleting an issue removes its comments.
 
-Same as ContractorRow. `sort_order` preserves user-defined sequence.
-
-### 2.8 Daily Log → Report (1:0 or 1)
-
-A Daily Log may or may not have an associated Report. After the field manager triggers generation, a Report record is created with status `draft`. The unique constraint on `daily_log_id` in the `report` table ensures only one daily Report exists per log.
-
-### 2.9 Photo (polymorphic — Daily Log and Issue)
-
-Photos can be attached to:
-- `daily_log` entities
-- `issue` entities
-- (future) `decision` entities
-
-The `entity_type` column acts as a discriminator. Queries filter by `entity_type = 'daily_log' AND entity_id = <log_id>` to retrieve photos for a given log.
-
-### 2.10 Comment (polymorphic — Issue)
-
-Comments currently attach only to Issues but the polymorphic design allows them to be extended to Decisions or Blockers in Phase 2 without schema changes.
+### 2.14 Photo — Typed FK Constraint
+Each photo belongs to exactly one parent entity, enforced by:
+```sql
+CONSTRAINT photo_exactly_one_parent CHECK (
+    (daily_log_id IS NOT NULL)::int +
+    (issue_id IS NOT NULL)::int = 1
+)
+```
 
 ---
 
 ## 3. Status Enumerations
 
-Rather than enum types (which are hard to migrate), all status columns use `text` with check constraints.
-
 | Entity | Column | Allowed Values |
 |---|---|---|
 | project | status | planning, active, on_hold, completed |
-| daily_log | (none — implicit: submitted) | — |
 | report | status | draft, ready, sent |
 | report | type | daily, weekly, monthly |
 | issue | status | open, in_progress, resolved, reopened, closed |
@@ -213,23 +232,36 @@ Rather than enum types (which are hard to migrate), all status columns use `text
 | blocker | status | open, in_progress, resolved |
 | blocker | priority | low, medium, high, critical |
 | decision | status | pending, approved, rejected, deferred |
-| photo | entity_type | daily_log, issue, decision |
-| comment | entity_type | issue, blocker, decision |
+| project_member | role | field_manager, company_manager, admin, viewer |
 
 ---
 
-## 4. Key Indexes (Summary)
+## 4. Key Indexes
 
 | Table | Index | Purpose |
 |---|---|---|
 | daily_log | UNIQUE(project_id, date) | One log per project per day |
-| report | UNIQUE(daily_log_id) | One report per log |
-| report | INDEX(project_id, date DESC) | Dashboard queries |
-| issue | INDEX(project_id, status, severity) | Filtered issue lists |
-| blocker | INDEX(project_id, status, priority) | Filtered blocker lists |
-| decision | INDEX(project_id, status) | Pending decision lists |
-| photo | INDEX(entity_type, entity_id) | Photo retrieval by parent |
-| comment | INDEX(entity_type, entity_id) | Comment retrieval by parent |
+| daily_log | UNIQUE(project_id, log_number) | Sequential number integrity |
+| daily_log | INDEX(project_id, date DESC) | Dashboard and list queries |
+| project_member | INDEX(user_id) | "What projects does this user have?" |
+| project_member | INDEX(project_id) | "Who is on this project?" |
+| project_member | UNIQUE(project_id, user_id) | No duplicate memberships |
+| report | UNIQUE(daily_log_id) | One daily report per log |
+| report | UNIQUE(project_id, type, date) WHERE type IN ('weekly','monthly') | No duplicate aggregate reports |
+| report | INDEX(project_id, date DESC) | Report list queries |
+| report | INDEX(project_id, status) | Status-filtered report queries |
+| issue | INDEX(project_id, status) | Filtered issue lists |
+| issue | PARTIAL INDEX(severity) WHERE status NOT IN ('closed','resolved') | Executive dashboard critical issues |
+| issue | PARTIAL INDEX(due_date) WHERE due_date IS NOT NULL | Overdue issue detection |
+| issue | PARTIAL INDEX(discovered_in_log_id) WHERE NOT NULL | Issues-per-log lookup |
+| photo | PARTIAL INDEX(daily_log_id) WHERE NOT NULL | Log photo retrieval |
+| photo | PARTIAL INDEX(issue_id) WHERE NOT NULL | Issue photo retrieval |
+| photo | UNIQUE(storage_key) | Duplicate upload prevention |
+| issue_comment | INDEX(issue_id, created_at) | Ordered comment thread |
+| blocker | INDEX(project_id, status) | Filtered blocker lists |
+| blocker | PARTIAL INDEX(priority, status) WHERE critical AND not resolved | Executive dashboard |
+| decision | INDEX(project_id, status) | Pending decision queries |
+| decision | PARTIAL INDEX(due_date) WHERE status = 'pending' | Overdue decision detection |
 | contractor_row | INDEX(daily_log_id, sort_order) | Ordered contractor list |
 | equipment_row | INDEX(daily_log_id, sort_order) | Ordered equipment list |
 
@@ -239,11 +271,19 @@ Rather than enum types (which are hard to migrate), all status columns use `text
 
 | Rule | Enforcement |
 |---|---|
-| One log per (project, date) | UNIQUE index |
-| One daily Report per DailyLog | UNIQUE index on daily_log_id |
-| Report.project_id == Report.DailyLog.project_id | Application layer + trigger |
-| Photo references valid entity | Application layer (polymorphic) |
-| Comment references valid entity | Application layer (polymorphic) |
+| One log per (project, date) | UNIQUE index on daily_log |
+| Log date not in the future | CHECK constraint: date <= CURRENT_DATE |
+| Sequential log number per project | BEFORE INSERT trigger; UNIQUE(project_id, log_number) as backstop |
+| project target_date >= start_date | CHECK constraint on project |
+| contractor workers >= 1 | CHECK constraint on contractor_row |
+| One daily Report per DailyLog | UNIQUE index on report(daily_log_id) |
+| No duplicate weekly/monthly reports | PARTIAL UNIQUE index on report(project_id, type, date) |
+| Photo belongs to exactly one parent | CHECK constraint on photo |
+| Photo references valid entity | FK constraint (daily_log_id or issue_id) |
+| Cascade: log deleted → draft/ready report deleted | ON DELETE CASCADE on report.daily_log_id |
+| Sent report cannot have its log deleted | BEFORE DELETE trigger on daily_log |
+| Sent report cannot have its log edited | BEFORE UPDATE trigger on daily_log |
+| Cascade: log deleted → photos deleted | ON DELETE CASCADE on photo.daily_log_id |
+| Cascade: issue deleted → photos and comments deleted | ON DELETE CASCADE on photo.issue_id and issue_comment.issue_id |
+| resolved_at set on first resolution | BEFORE UPDATE trigger on issue and blocker |
 | Status transitions are valid | Application layer state machine |
-| Log date not in the future | Check constraint: date <= CURRENT_DATE |
-| Report.sent_at set only when status = sent | Application layer |

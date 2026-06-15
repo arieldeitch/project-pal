@@ -1,6 +1,7 @@
 # Domain Model — Mehayesod Construction Project Execution Platform
 
-> Version 1.0 | 2026-06-14
+> Version 1.1 | 2026-06-15
+> Changes from v1.0: RC-01 (photo typed FKs), RC-04 (project_member added), RA-01 (resolved_at), RA-02 (discovered_in_log_id), RA-05 (log_number)
 
 ---
 
@@ -28,16 +29,17 @@ The top-level container. Everything in the system belongs to a project.
 - `id` — surrogate key
 - `name` — human-readable project name (e.g., "הצלפים 24")
 - `address` — site address
-- `client` — client company or individual name
-- `manager` — project manager name (will become FK to users in Phase 3)
+- `client` — client company or individual name (text field; becomes FK to `client` table in Phase 2)
+- `manager` — legacy display field for the primary manager's name; authoritative membership is in `project_member`
 - `status` — lifecycle stage: `planning | active | on_hold | completed`
 - `startDate` — contract start
-- `targetDate` — target completion
+- `targetDate` — target completion; must be >= `startDate`
 
 **Invariants:**
-- A project must have exactly one manager at all times.
+- A project must have at least one `project_member` with role `company_manager` or `admin`.
 - Only `active` projects require daily logs.
 - `planning` projects may have blockers but not daily logs.
+- `target_date >= start_date` enforced by CHECK constraint.
 
 ---
 
@@ -45,29 +47,30 @@ The top-level container. Everything in the system belongs to a project.
 
 The Daily Log is the **most important entity** in the system. Every workday must produce exactly one Daily Log per active project. The Daily Log is the raw input from which all reports are derived.
 
-A Daily Log represents a complete snapshot of site activity for one calendar day on one project.
-
 **Attributes:**
 - `id` — surrogate key
 - `projectId` — FK to Project
-- `date` — ISO date (YYYY-MM-DD); unique per project
-- `submittedBy` — name of field employee who created the log (will become FK to users)
-- `workHours` — work shift range (e.g., "07:00-15:00")
+- `date` — ISO date (YYYY-MM-DD); unique per project; cannot be a future date
+- `logNumber` — sequential integer per project, assigned automatically on creation. Display format: `LOG-{YYYY}-{NNNNNN}` (e.g., `LOG-2026-000047`). The formatted string is computed at render time; only the integer is stored.
+- `submittedBy` — display name of field employee (becomes FK to users in Phase 3)
+- `workHours` — work shift range as text (e.g., "07:00-15:00")
 - `weather` — free text (e.g., "חמים, 28°")
 - `exceptionalEvents` — free text; default "אין"
 - `contractorNotes` — free text; default "אין"
-- `workDescription` — ordered list of text work items
+- `workDescription` — ordered list of text work items (stored as `jsonb`)
 - `createdAt` — server timestamp when record was persisted
 
 **Child entities (one-to-many within a log):**
 - `ContractorRow` — one row per contractor on site
 - `EquipmentRow` — one row per equipment type used
-- `Photo` — photos taken on site
+- `Photo` — photos taken on site (via `photo.daily_log_id`)
 
 **Invariants:**
-- One Daily Log per (project, date) pair. Uniqueness constraint must be enforced at the DB level.
-- A Daily Log cannot be created for a future date.
-- Once a Report has been marked `sent`, its source Daily Log should be immutable.
+- One Daily Log per (project, date) pair — `UNIQUE (project_id, date)`.
+- Cannot be created for a future date — `CHECK (date <= CURRENT_DATE)`.
+- Once a Report linked to this log has been marked `sent`, the log is immutable (UPDATE blocked by trigger).
+- A log with a `sent` report cannot be deleted (DELETE blocked by trigger).
+- A log with a `draft` or `ready` report can be deleted — the report is cascade-deleted.
 
 ---
 
@@ -77,11 +80,12 @@ Child of Daily Log. Represents one contractor company working on site for the da
 
 **Attributes:**
 - `id` — surrogate key
-- `dailyLogId` — FK to DailyLog
+- `dailyLogId` — FK to DailyLog (CASCADE delete)
 - `contractor` — contractor company name
 - `trade` — trade category (e.g., "שלד", "חשמל", "אינסטלציה")
-- `workers` — number of workers present
+- `workers` — number of workers present; must be >= 1
 - `notes` — free text
+- `sortOrder` — display order (preserves paper diary sequence)
 
 ---
 
@@ -91,59 +95,72 @@ Child of Daily Log. Represents one piece or class of equipment used on site.
 
 **Attributes:**
 - `id` — surrogate key
-- `dailyLogId` — FK to DailyLog
+- `dailyLogId` — FK to DailyLog (CASCADE delete)
 - `name` — equipment name (e.g., "מיני מחפרון")
-- `quantity` — count
+- `quantity` — count; must be >= 1
 - `notes` — free text
+- `sortOrder` — display order
 
 ---
 
 ### 2.5 Photo
 
-Photos are attached to multiple entity types: Daily Logs, Issues, and (future) Decisions. Each photo carries contextual metadata beyond just the file.
+Photos are attached to Daily Logs and Issues. Each photo carries site documentation metadata.
+
+**Design (RC-01): Typed Nullable Foreign Keys**
+
+The photo entity uses two nullable FK columns (`dailyLogId`, `issueId`). Exactly one must be non-null, enforced by a CHECK constraint. This replaces the previous polymorphic `entity_type / entity_id` pattern, which was incompatible with Supabase PostgREST's FK-driven join system.
 
 **Attributes:**
 - `id` — surrogate key
-- `entityType` — discriminator: `daily_log | issue | decision`
-- `entityId` — FK to the owning entity
-- `storageKey` — path in Supabase Storage (e.g., `projects/pr1/logs/lg1/photo_001.webp`)
+- `dailyLogId` — FK to DailyLog (nullable; CASCADE delete); set when photo belongs to a daily log
+- `issueId` — FK to Issue (nullable; CASCADE delete); set when photo belongs to an issue
+- `storageKey` — path in Supabase Storage (e.g., `site-photos/proj-uuid/logs/log-uuid/photo_001.webp`); unique
 - `caption` — human-entered description
-- `workItem` — which work item this photo documents (free text or FK to work item)
+- `workItem` — which work item this photo documents (free text referencing a work description entry)
 - `area` — site area / location label
-- `uploadedBy` — who uploaded (will become FK to users)
+- `uploadedBy` — display name (becomes FK to users in Phase 3)
 - `uploadedAt` — server timestamp
+
+**Constraint:** `(dailyLogId IS NOT NULL)::int + (issueId IS NOT NULL)::int = 1`
+
+**Adding future parent types (Phase 2):** Add `decisionId UUID REFERENCES decision(id) ON DELETE CASCADE` column and update the CHECK constraint. One-line migration, no data migration required.
 
 ---
 
 ### 2.6 Report
 
-Reports are **system-generated artifacts**, not user-authored documents. The field employee fills a Daily Log; the system generates the Report automatically.
+Reports are **system-generated artifacts**, not user-authored documents.
 
 **Attributes:**
 - `id` — surrogate key
 - `projectId` — FK to Project
-- `dailyLogId` — FK to DailyLog (nullable for weekly/monthly aggregates)
+- `dailyLogId` — FK to DailyLog (nullable for weekly/monthly; CASCADE delete for daily)
 - `type` — `daily | weekly | monthly`
-- `date` — the date the report covers (or week/month start)
+- `date` — date the report covers (for weekly: Monday of the week; for monthly: first of the month)
 - `status` — `draft | ready | sent`
 - `sentAt` — timestamp when marked as sent (nullable)
+- `pdfStorageKey` — path to the immutable PDF snapshot in Supabase Storage (set in Phase 4)
+- `pdfGeneratedAt` — when the PDF was generated
 - `createdAt` — server timestamp
 
 **Invariants:**
-- A `daily` Report has a 1:1 relationship with a DailyLog.
-- Each DailyLog produces at most one `daily` Report (enforced by unique index on `dailyLogId`).
-- `weekly` and `monthly` reports are generated by aggregating Daily Logs; they do **not** duplicate the log data — they reference it.
-- A Report's content is **derived on-read** from the source Daily Log(s). Only metadata (status, sentAt) is stored independently.
+- Each DailyLog produces at most one `daily` Report — `UNIQUE (daily_log_id)`.
+- No duplicate weekly/monthly reports per project per period — `UNIQUE INDEX (project_id, type, date) WHERE type IN ('weekly','monthly')`.
+- Report **content** is derived on-read from the source Daily Log. Only metadata is stored.
+- `ON DELETE CASCADE` on `daily_log_id` — deleting a log auto-deletes its draft/ready report.
+- Deleting a log with a `sent` report is blocked by trigger.
 
 ---
 
 ### 2.7 Issue
 
-Issues are field-observed quality defects, non-conformances, or punch-list items. Inspired by Cemento's field inspection model.
+Issues are field-observed quality defects, non-conformances, or punch-list items.
 
 **Attributes:**
 - `id` — surrogate key
 - `projectId` — FK to Project
+- `discoveredInLogId` — FK to DailyLog (nullable, `ON DELETE SET NULL`); which daily log first noted this issue
 - `title` — short description
 - `location` — site area (e.g., "קומה 2 - אזור B")
 - `description` — detailed description
@@ -152,31 +169,34 @@ Issues are field-observed quality defects, non-conformances, or punch-list items
 - `dueDate` — resolution deadline
 - `severity` — `low | medium | high | critical`
 - `status` — `open | in_progress | resolved | reopened | closed`
+- `resolvedAt` — timestamp of first resolution; set automatically by trigger when status → `resolved` or `closed`; retained on reopen (captures first resolution for analytics)
 - `createdAt` — server timestamp
+- `updatedAt` — auto-maintained
 
 **Child entities:**
-- `Photo` (via polymorphic Photo entity)
-- `Comment` — discussion thread on the issue
+- `Photo` (via `photo.issue_id`)
+- `IssueComment` (via `issue_comment.issue_id`)
 
 ---
 
-### 2.8 Comment
+### 2.8 IssueComment
 
-Threaded comments on Issues (extensible to other entities).
+Threaded comments on Issues.
 
 **Attributes:**
 - `id` — surrogate key
-- `entityType` — `issue` (extensible)
-- `entityId` — FK
-- `author` — name string (will become FK to users)
-- `text` — comment body
+- `issueId` — FK to Issue (CASCADE delete)
+- `author` — display name (becomes FK to users in Phase 3)
+- `body` — comment text
 - `createdAt` — server timestamp
+
+**Note:** Renamed from `Comment` in v1.0 and converted to a direct FK (not polymorphic). Comments on Blockers or Decisions are added as separate `blocker_comment` / `decision_comment` tables in Phase 2 if required.
 
 ---
 
 ### 2.9 Blocker
 
-Blockers are impediments that prevent project progress. They are tracked separately from issues because they require management intervention, not contractor action.
+Blockers are impediments that prevent project progress. They require management intervention, not contractor action.
 
 **Attributes:**
 - `id` — surrogate key
@@ -188,19 +208,15 @@ Blockers are impediments that prevent project progress. They are tracked separat
 - `dueDate` — target resolution date
 - `priority` — `low | medium | high | critical`
 - `status` — `open | in_progress | resolved`
+- `resolvedAt` — timestamp when first resolved; set by trigger (same mechanism as Issue)
 - `createdAt` — server timestamp
-
-**Examples of blockers:**
-- Missing building permit
-- Concrete supplier delay
-- Missing consultant plan
-- Missing management approval
+- `updatedAt` — auto-maintained
 
 ---
 
 ### 2.10 Decision
 
-Decisions are management approvals required to unblock work. They create an auditable trail of what was decided, when, and by whom.
+Decisions are management approvals required to unblock work. They create an auditable trail.
 
 **Attributes:**
 - `id` — surrogate key
@@ -212,62 +228,93 @@ Decisions are management approvals required to unblock work. They create an audi
 - `dueDate` — when the decision is needed
 - `status` — `pending | approved | rejected | deferred`
 - `createdAt` — server timestamp
+- `updatedAt` — auto-maintained
+
+---
+
+### 2.11 ProjectMember (RC-04)
+
+The junction entity between Projects and system users. Defines who has access to a project and in what role.
+
+**Attributes:**
+- `id` — surrogate key
+- `projectId` — FK to Project (CASCADE delete — removing a project removes all memberships)
+- `userId` — UUID; will gain FK to `auth.users` in Phase 3 when authentication is enabled
+- `role` — `field_manager | company_manager | admin | viewer`
+- `createdAt` — server timestamp
+
+**Roles:**
+| Role | Who | Permissions |
+|---|---|---|
+| `field_manager` | Field PM, site supervisor | Creates and edits daily logs on assigned projects |
+| `company_manager` | CEO, Operations | Full read access; approves decisions; marks reports sent |
+| `admin` | System administrator | Full CRUD on all entities |
+| `viewer` | Client (future) | Read-only access to reports for assigned projects |
+
+**Constraint:** `UNIQUE (project_id, user_id)` — one membership record per person per project.
+
+**Why now:** Phase 3 RLS policies will query this table to scope field manager access. Creating it after auth is live would require adding the table AND rewriting all RLS policies in a single coordinated migration. Adding it now makes Phase 3 a two-step process: (1) add auth.users FK, (2) write RLS.
 
 ---
 
 ## 3. Relationships
 
 ```
-Project (1) ────< DailyLog (many)
+Project (1) ────< DailyLog (many)                    [UNIQUE per project+date]
+Project (1) ────< ProjectMember (many)               [access control junction]
 Project (1) ────< Issue (many)
 Project (1) ────< Blocker (many)
 Project (1) ────< Decision (many)
 Project (1) ────< Report (many)
 
-DailyLog (1) ────< ContractorRow (many)
-DailyLog (1) ────< EquipmentRow (many)
-DailyLog (1) ────< Photo (many, via polymorphic)
-DailyLog (1) ──── Report (1, daily type)
+DailyLog (1) ────< ContractorRow (many)              [CASCADE delete]
+DailyLog (1) ────< EquipmentRow (many)               [CASCADE delete]
+DailyLog (1) ────< Photo (many, via daily_log_id)    [CASCADE delete]
+DailyLog (1) ──── Report (1, daily type)             [CASCADE delete]
+DailyLog (1) ──o< Issue (many, discovered_in_log_id) [SET NULL on delete]
 
-Issue (1) ────< Photo (many, via polymorphic)
-Issue (1) ────< Comment (many)
+Issue (1) ────< Photo (many, via issue_id)           [CASCADE delete]
+Issue (1) ────< IssueComment (many)                  [CASCADE delete]
 
-Report references DailyLog (no data duplication)
+Report references DailyLog (content derived on-read, no data duplication)
 ```
-
-**Key cardinalities:**
-- One Project → many Daily Logs (one per day, enforced unique)
-- One Daily Log → exactly one daily Report (after generation)
-- One Daily Log → many ContractorRows, EquipmentRows, Photos
-- One Issue → many Photos, Comments
 
 ---
 
 ## 4. Business Rules
 
 ### Logging Rules
-1. **One Log Per Day Per Project** — The system enforces one Daily Log per (project, date) combination.
-2. **No Future Logs** — Field managers cannot pre-date a future log entry.
-3. **Log Completeness** — A log without contractors is technically valid but should trigger a UI warning.
-4. **Missing Log Detection** — The dashboard must identify active projects that have no log for the current day.
+1. **One Log Per Day Per Project** — `UNIQUE (project_id, date)` constraint.
+2. **No Future Logs** — `CHECK (date <= CURRENT_DATE)` constraint.
+3. **Sequential Numbering** — `log_number` auto-assigned per project; displayed as `LOG-YYYY-NNNNNN`.
+4. **Log Completeness Warning** — A log without contractors is technically valid but should trigger a UI warning.
+5. **Missing Log Detection** — Dashboard identifies active projects with no log for today.
 
 ### Report Rules
-5. **Auto-Generation** — Reports are generated from logs, not authored independently.
-6. **No Data Duplication** — A daily Report record stores only metadata; content is assembled from the source log at render time.
-7. **Immutability After Send** — Once a Report is marked `sent`, the source Daily Log must be locked from edits.
-8. **One Report Per Log** — Each Daily Log has at most one associated Report.
+6. **Auto-Generation** — Reports are generated from logs, not authored independently.
+7. **No Data Duplication** — Report stores only metadata; content assembled from source log at render.
+8. **Immutability After Send** — Once `sent`, the source log is locked from edits and deletion (trigger enforcement).
+9. **Cascade Delete** — Draft/ready reports are deleted with their source log.
+10. **One Report Per Log** — `UNIQUE (daily_log_id)` constraint.
+11. **No Duplicate Aggregates** — Weekly/monthly reports are unique per (project, type, date).
 
 ### Issue Rules
-9. **Severity Escalation** — Critical issues must appear prominently in the Executive Dashboard regardless of project filter.
-10. **Reopening** — A `resolved` issue may be moved to `reopened` if the fix is incomplete.
+12. **Severity Escalation** — Critical issues surface prominently in the Executive Dashboard regardless of project filter.
+13. **Reopening** — A `resolved` issue may move to `reopened`; `resolvedAt` is preserved (records first resolution).
+14. **Discovery Linkage** — An issue may optionally reference the daily log in which it was first observed.
 
 ### Blocker Rules
-11. **Critical Blockers Block Projects** — A project with one or more `critical` open blockers is flagged in the dashboard.
-12. **Blocker vs. Issue** — Blockers are management-level impediments; Issues are quality defects requiring contractor correction. They are not interchangeable.
+15. **Critical Blockers Flag Projects** — A project with one or more `critical` open blockers is flagged in the dashboard.
+16. **Blocker vs. Issue** — Blockers are management-level impediments; Issues are quality defects for contractor correction.
 
 ### Decision Rules
-13. **Pending Decisions Block Work** — Decisions in `pending` status represent unresolved management approvals that may be blocking field progress.
-14. **Audit Trail** — The status history of a Decision (approved → rejected, etc.) should be preserved in Phase 2.
+17. **Pending Decisions Block Work** — `pending` decisions represent unresolved approvals that may be blocking field progress.
+18. **Audit Trail** — Status transitions should be preserved; a `decision_history` table is Phase 3+.
+
+### Access Rules
+19. **Project Scoping** — A `field_manager` can only see and create data in projects where they have a `project_member` record.
+20. **Company Managers** — Have read access to all projects.
+21. **Single Membership** — `UNIQUE (project_id, user_id)` — one role per person per project.
 
 ---
 
@@ -278,64 +325,71 @@ DAILY LOG LIFECYCLE
 ────────────────────
 Field employee submits log
     │
+    ├── log_number auto-assigned (trigger)
     ▼
-DailyLog created (status implicit: submitted)
+DailyLog created
     │
     ▼
-System auto-generates Report [status: draft]
+Report auto-created [status: draft]
     │
     ▼
-Manager reviews report → [status: ready]
+Manager reviews → [status: ready]
     │
     ▼
-Report sent to client → [status: sent]
+PDF generated → Report sent → [status: sent]
     │
-    └── DailyLog becomes immutable
+    ├── DailyLog becomes immutable (UPDATE/DELETE blocked)
+    └── PDF snapshot stored in Storage
 
 
 ISSUE LIFECYCLE
 ────────────────
-Observed defect logged → open
+Defect observed on site
+    │
+    ├── Optional: link to discovery log (discovered_in_log_id)
+    ▼
+Issue created [status: open]
     │
     ▼
-Contractor notified → in_progress
+Contractor notified → [status: in_progress]
     │
     ▼
-Fix completed → resolved
-    │
-    ├── Accepted → closed
-    └── Rejected → reopened → in_progress (cycle)
+Fix completed → [status: resolved]
+    │             └── resolved_at set by trigger
+    ├── Accepted → [status: closed]
+    └── Rejected → [status: reopened] → in_progress (cycle)
 
 
 BLOCKER LIFECYCLE
 ──────────────────
-Impediment identified → open
+Impediment identified → [status: open]
     │
     ▼
-Resolution in progress → in_progress
+Resolution in progress → [status: in_progress]
     │
     ▼
-Impediment cleared → resolved
+Impediment cleared → [status: resolved]
+    └── resolved_at set by trigger
 
 
 DECISION LIFECYCLE
 ───────────────────
-Approval needed → pending
+Approval needed → [status: pending]
     │
-    ├── Approved → approved
-    ├── Rejected → rejected
-    └── Deferred → deferred (pending reconsideration)
+    ├── Approved → [status: approved]
+    ├── Rejected → [status: rejected]
+    └── Deferred → [status: deferred] → pending (reconsideration)
 
 
 PROJECT LIFECYCLE
 ──────────────────
-New project created → planning
+New project created → [status: planning]
     │
     ▼
-Work begins → active
+Work begins → [status: active]
     │
-    ├── Work paused → on_hold → active
-    └── Work done → completed
+    ├── Work paused → [status: on_hold] → active
+    └── Work done → [status: completed]
 ```
 
 ---
@@ -350,5 +404,6 @@ For development prioritization:
 4. **Issue** — Quality control. High operational value.
 5. **Blocker** — Management visibility. High executive value.
 6. **Decision** — Governance trail. Medium-high value.
-7. **ContractorRow / EquipmentRow / Photo** — Sub-entities of Daily Log.
-8. **Comment** — Discussion layer. Phase 2+.
+7. **ProjectMember** — Auth prerequisite. Needed before Phase 3.
+8. **ContractorRow / EquipmentRow / Photo** — Sub-entities of Daily Log.
+9. **IssueComment** — Discussion layer. Phase 2+.

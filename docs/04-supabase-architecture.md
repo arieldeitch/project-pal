@@ -1,7 +1,8 @@
 # Supabase Architecture Design — Mehayesod Platform
 
-> Version 1.0 | 2026-06-14
+> Version 1.1 | 2026-06-15
 > **Status: Design only. Do not implement until Phase 2–3.**
+> Changes from v1.0: RC-04 — RLS policy templates updated to use `project_member` table instead of JWT claims for project scoping.
 
 ---
 
@@ -150,13 +151,16 @@ Clients (external) get a separate read-only **client portal** in Phase 2 with a 
   "sub": "uuid",
   "email": "user@company.com",
   "app_metadata": {
-    "role": "field_manager",
-    "project_ids": ["pr1", "pr3"]
+    "role": "field_manager"
   }
 }
 ```
 
-`project_ids` scopes a field manager to specific projects. Company managers and admins have access to all projects (empty array = all).
+**RC-04 change:** `project_ids` has been removed from the JWT claims. Project scoping is determined at query time by joining to the `project_member` table, not by reading a static array from the JWT.
+
+**Why:** JWT claims are issued at login and only refresh on the next token cycle. A field manager assigned to a new project midday would have no access until their token expires. Conversely, a manager removed from a project would retain access until expiry. The `project_member` table is the live, authoritative source of project access — RLS policies must query it rather than relying on the JWT.
+
+The `role` claim remains in the JWT for the role check (field_manager vs. company_manager), since roles change far less frequently than project assignments.
 
 ### 4.4 Auth Flow
 
@@ -188,10 +192,11 @@ Supabase RLS policies validate JWT claims per table
 ### 5.1 Design Principles
 
 1. **Default deny** — Every table starts with RLS enabled and zero permissive policies. Access is granted explicitly.
-2. **Role-based policies** — Policies read the `app_metadata.role` claim from the JWT.
-3. **Project scoping** — `field_manager` can only see projects in their `project_ids` claim.
+2. **Role-based policies** — Policies read the `app_metadata.role` claim from the JWT for role checks.
+3. **Project scoping** — `field_manager` can only see projects listed in their `project_member` rows. **Never from JWT claims** (RC-04).
 4. **No `USING (true)`** — Never a blanket allow-all policy.
 5. **Separate read and write policies** — `SELECT` and `INSERT/UPDATE/DELETE` are distinct policies.
+6. **Live membership, not cached claims** — Project access is always resolved from the `project_member` table at query time.
 
 ### 5.2 Policy Templates
 
@@ -201,39 +206,63 @@ CREATE POLICY "company_manager_read_all_projects"
 ON public.project FOR SELECT
 TO authenticated
 USING (
-    (auth.jwt() -> 'app_metadata' ->> 'role') = 'company_manager'
+    (auth.jwt() -> 'app_metadata' ->> 'role') IN ('company_manager','admin')
 );
 ```
 
-**Daily log — field_manager reads own projects only:**
+**Daily log — field_manager reads own projects only (RC-04: uses project_member table):**
 ```sql
 CREATE POLICY "field_manager_read_own_projects_logs"
 ON public.daily_log FOR SELECT
 TO authenticated
 USING (
     (auth.jwt() -> 'app_metadata' ->> 'role') = 'field_manager'
-    AND project_id = ANY(
-        ARRAY(
-            SELECT jsonb_array_elements_text(
-                auth.jwt() -> 'app_metadata' -> 'project_ids'
-            )::uuid
-        )
+    AND project_id IN (
+        SELECT pm.project_id
+        FROM public.project_member pm
+        WHERE pm.user_id = auth.uid()
     )
 );
 ```
 
-**Daily log — field_manager creates logs in own projects:**
+**Daily log — field_manager creates logs in own projects (RC-04: uses project_member table):**
 ```sql
 CREATE POLICY "field_manager_insert_own_logs"
 ON public.daily_log FOR INSERT
 TO authenticated
 WITH CHECK (
     (auth.jwt() -> 'app_metadata' ->> 'role') = 'field_manager'
-    AND project_id = ANY(
-        ARRAY(
-            SELECT jsonb_array_elements_text(
-                auth.jwt() -> 'app_metadata' -> 'project_ids'
-            )::uuid
+    AND project_id IN (
+        SELECT pm.project_id
+        FROM public.project_member pm
+        WHERE pm.user_id = auth.uid()
+    )
+);
+```
+
+**Photo — field_manager accesses photos for their projects (RC-01 + RC-04):**
+```sql
+-- Photos are now FK-linked; join through the parent entity for authorization
+CREATE POLICY "field_manager_read_log_photos"
+ON public.photo FOR SELECT
+TO authenticated
+USING (
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'field_manager'
+    AND (
+        daily_log_id IN (
+            SELECT dl.id FROM public.daily_log dl
+            WHERE dl.project_id IN (
+                SELECT pm.project_id FROM public.project_member pm
+                WHERE pm.user_id = auth.uid()
+            )
+        )
+        OR
+        issue_id IN (
+            SELECT i.id FROM public.issue i
+            WHERE i.project_id IN (
+                SELECT pm.project_id FROM public.project_member pm
+                WHERE pm.user_id = auth.uid()
+            )
         )
     )
 );

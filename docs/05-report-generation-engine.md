@@ -1,6 +1,7 @@
 # Report Generation Engine Design — Mehayesod Platform
 
-> Version 1.0 | 2026-06-14
+> Version 1.1 | 2026-06-15
+> Changes from v1.0: RC-01 — Photo join query fixed. The polymorphic `photos:photo!entity_id` join was incompatible with PostgREST. Now uses the typed FK `photos:photo!daily_log_id`.
 
 ---
 
@@ -49,14 +50,14 @@ Report.id → Report record (metadata)
 const { data } = await supabase
   .from('report')
   .select(`
-    id, status, sent_at, date, type,
+    id, status, sent_at, date, type, log_number,
     daily_log:daily_log_id (
-      id, date, work_hours, weather, submitted_by,
+      id, date, log_number, work_hours, weather, submitted_by,
       exceptional_events, contractor_notes, work_description,
       project:project_id (name, client, address, manager),
       contractor_rows (contractor, trade, workers, notes, sort_order),
       equipment_rows (name, quantity, notes, sort_order),
-      photos:photo!entity_id (storage_key, caption, work_item, area)
+      photos:photo!daily_log_id (storage_key, caption, work_item, area)
     )
   `)
   .eq('id', reportId)
@@ -64,6 +65,10 @@ const { data } = await supabase
 ```
 
 This is one round-trip to the database.
+
+**RC-01 fix:** The photo join now uses `photos:photo!daily_log_id` instead of the previous `photos:photo!entity_id`. The `!daily_log_id` hint tells PostgREST to traverse the `photo.daily_log_id` FK when joining photos to the daily log. This works because `photo.daily_log_id` is a real foreign key constraint — PostgREST can resolve the relationship automatically.
+
+The previous `!entity_id` syntax was attempting to join through a non-existent FK (the polymorphic `entity_id` column has no FK constraint). That query would have failed at runtime with "Could not find a relationship between 'daily_log' and 'photo'".
 
 ---
 
