@@ -127,9 +127,12 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 // Bypass auth when Supabase credentials are not yet configured.
-// Accepts both legacy JWT keys (eyJ...) and new publishable keys (sb_publishable_ / sb_secret_).
-// When both env vars are real values, normal auth enforcement is restored automatically.
-const _anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+// Accepts VITE_SUPABASE_ANON_KEY (external project) or VITE_SUPABASE_PUBLISHABLE_KEY (Lovable Cloud).
+// When either key is present with a real URL, normal auth enforcement is restored automatically.
+const _anonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ??
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+  "";
 const DEV_BYPASS =
   !import.meta.env.VITE_SUPABASE_URL?.includes(".supabase.co") ||
   _anonKey.length < 20 ||
