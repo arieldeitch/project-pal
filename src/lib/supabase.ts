@@ -1,17 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string)?.replace(/\/$/, "");
 const supabaseKey =
   import.meta.env.VITE_SUPABASE_ANON_KEY ??
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error(
-    "[supabase] Missing VITE_SUPABASE_URL and either VITE_SUPABASE_ANON_KEY or VITE_SUPABASE_PUBLISHABLE_KEY — check .env.local"
+  throw new Error(
+    "[supabase] Missing environment variables: VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY. " +
+    "Add them to .env (committed) or set them in Lovable Dashboard."
   );
 }
 
-export const supabase = createClient(
-  supabaseUrl ?? "https://placeholder.supabase.co",
-  supabaseKey ?? "placeholder"
+console.info(
+  "[supabase] client initialised — URL:", supabaseUrl,
+  "| key source:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "VITE_SUPABASE_ANON_KEY" : "VITE_SUPABASE_PUBLISHABLE_KEY"
 );
+
+export const supabase = createClient(supabaseUrl, supabaseKey);

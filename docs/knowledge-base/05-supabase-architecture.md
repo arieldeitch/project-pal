@@ -9,20 +9,19 @@ Singleton pattern — one client for the entire app:
 ```typescript
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string)?.replace(/\/$/, "");
+const supabaseKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ??
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("[supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("[supabase] Missing VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY.");
 }
 
-export const supabase = createClient(
-  supabaseUrl ?? "https://placeholder.supabase.co",
-  supabaseAnonKey ?? "placeholder"
-);
+export const supabase = createClient(supabaseUrl, supabaseKey);
 ```
 
-The fallback to placeholder values prevents a crash on startup if env vars are missing. The app will fail to fetch data but won't throw on import.
+Credentials are provided via a committed `.env` file (URL + `sb_publishable_` anon key). Missing credentials throw immediately rather than silently routing calls to a placeholder domain.
 
 ---
 
@@ -30,22 +29,20 @@ The fallback to placeholder values prevents a crash on startup if env vars are m
 
 | Variable | Description | File |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Project API URL | `.env.local` |
-| `VITE_SUPABASE_ANON_KEY` | Public anon JWT | `.env.local` |
+| `VITE_SUPABASE_URL` | Project API URL | `.env` (committed) |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key (`sb_publishable_` format) | `.env` (committed) |
 
 **Never use `service_role` key in frontend code.** Only `anon` key is safe to expose.
 
 ---
 
-## Current State: No RLS, No Auth
+## Current State: RLS Enabled, Auth Implemented
 
-As of Phase 2, RLS is OFF and Auth is not implemented. All tables are accessible with the anon key. This is intentional for MVP development speed.
-
-**This must change before any production deployment.**
+As of migration 010, RLS is ON with strict role-scoped policies (`admin > company_manager > field_manager`). Auth is implemented via email/password (Supabase Auth). All tables require authenticated session.
 
 ---
 
-## RLS Strategy (Phase 3 Plan)
+## RLS Strategy (Implemented)
 
 When implementing auth, the planned RLS design is:
 

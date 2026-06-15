@@ -27,8 +27,8 @@ VITE_SUPABASE_ANON_KEY ?? VITE_SUPABASE_PUBLISHABLE_KEY
 
 - Primary key: `VITE_SUPABASE_ANON_KEY` ✓
 - Fallback key: `VITE_SUPABASE_PUBLISHABLE_KEY` (for Lovable Cloud) ✓
-- URL fallback: `https://placeholder.supabase.co` (used only if URL missing) ✓
-- Error logged to console if both keys missing ✓
+- Placeholder fallback removed — missing credentials now throw immediately ✓
+- Real credentials provided via committed `.env` file ✓
 - No `service_role` key anywhere in `src/` ✓
 
 **Verdict: PASS**
