@@ -95,6 +95,20 @@ export interface PhotoItem {
   area: string;
 }
 
+export type PhotoCategory = "התקדמות" | "ביצוע" | "איכות" | "ליקוי" | "חסם" | "בקרה";
+
+export interface SitePhoto {
+  id: string;
+  projectId: string;
+  dailyLogId?: string;
+  fileName: string;
+  fileUrl: string;
+  caption: string;
+  category: PhotoCategory;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
 export interface DailyLog {
   id: string;
   projectId: string;

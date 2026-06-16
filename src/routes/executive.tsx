@@ -4,13 +4,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { hasLogToday, severityLabel, blockerStatusLabel, issueStatusLabel } from "@/lib/mock-data";
 import { ProjectStatusBadge, SeverityBadge, BlockerStatusBadge, IssueStatusBadge, DecisionStatusBadge, ReportStatusBadge } from "@/components/StatusBadges";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { FolderKanban, ClipboardList, FileWarning, AlertTriangle, AlertOctagon, Ban, GitBranch, Send } from "lucide-react";
+import { FolderKanban, ClipboardList, FileWarning, AlertTriangle, AlertOctagon, Ban, GitBranch, Send, Camera } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useDailyLogs } from "@/hooks/useDailyLogs";
 import { useIssues } from "@/hooks/useIssues";
 import { useBlockers } from "@/hooks/useBlockers";
 import { useDecisions } from "@/hooks/useDecisions";
 import { useReports } from "@/hooks/useReports";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_PHOTOS } from "@/lib/demo-data";
 
 export const Route = createFileRoute("/executive")({
   head: () => ({ meta: [{ title: "דשבורד הנהלה - מהיסוד" }] }),
@@ -197,6 +199,46 @@ function Executive() {
           </Table>
         </CardContent>
       </Card>
+
+      {DEMO_MODE && (() => {
+        const latest = [...DEMO_PHOTOS]
+          .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+          .slice(0, 4);
+        return (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-muted-foreground" />
+                תמונות אחרונות מהשטח
+              </CardTitle>
+              <span className="text-xs text-muted-foreground">עדכון חי מהשטח</span>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {latest.map((photo) => (
+                  <div key={photo.id} className="group relative overflow-hidden rounded-lg border">
+                    <img src={photo.fileUrl} alt={photo.caption} className="h-36 w-full object-cover transition-transform group-hover:scale-105" />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-black/20 to-transparent p-2">
+                      <p className="text-xs font-medium text-white leading-tight">{photo.caption}</p>
+                      <p className="mt-0.5 text-xs text-white/70">{projectName(photo.projectId)}</p>
+                    </div>
+                    <span className={`absolute right-1.5 top-1.5 rounded px-1.5 py-0.5 text-xs font-medium ${
+                      photo.category === "ליקוי" ? "bg-red-500/90 text-white" :
+                      photo.category === "חסם" ? "bg-orange-500/90 text-white" :
+                      photo.category === "התקדמות" ? "bg-green-500/90 text-white" :
+                      photo.category === "איכות" ? "bg-purple-500/90 text-white" :
+                      "bg-blue-500/90 text-white"
+                    }`}>{photo.category}</span>
+                    <div className="p-2">
+                      <p className="text-xs text-muted-foreground">{photo.uploadedAt.slice(0, 10)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }

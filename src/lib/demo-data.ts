@@ -1,4 +1,4 @@
-import type { Site, Project, Task, DailyLog, Issue, Blocker, Decision, Report } from "./mock-data";
+import type { Site, Project, Task, DailyLog, Issue, Blocker, Decision, Report, SitePhoto } from "./mock-data";
 
 // ─── SITES ───────────────────────────────────────────────────────────────────
 
@@ -451,7 +451,12 @@ export const DEMO_DAILY_LOGS: DailyLog[] = [
       { id: "e001", name: "עגורן צריח", quantity: 1, notes: "שעות פעולה: 7" },
       { id: "e002", name: "מיקסר בטון", quantity: 2, notes: "" },
     ],
-    photos: [], createdAt: "2026-06-16T17:00:00Z",
+    photos: [
+      { id: "ph-l01-1", url: "https://picsum.photos/seed/concrete-pour/800/600", caption: "יציקת תקרת קומה 6", workItem: "יציקת בטון", area: "קומה 6" },
+      { id: "ph-l01-2", url: "https://picsum.photos/seed/rebar-work/800/600", caption: "הנחת ברזל לתקרת קומה 6", workItem: "ברזל", area: "קומה 6" },
+      { id: "ph-l01-3", url: "https://picsum.photos/seed/construction-crane/800/600", caption: "עגורן צריח בפעולה - הרמת חומרים", workItem: "ציוד", area: "חצר" },
+    ],
+    createdAt: "2026-06-16T17:00:00Z",
   },
   {
     id: "l02", projectId: "p01", date: "2026-06-15", workHours: "9", weather: "שמש חלקית 26°C",
@@ -521,7 +526,11 @@ export const DEMO_DAILY_LOGS: DailyLog[] = [
       { id: "c013", contractor: "מעבדת בטון מרכזית", trade: "בדיקות", workers: 2, notes: "נלקחו דגימות בטון" },
     ],
     equipment: [{ id: "e008", name: "עגורן צריח", quantity: 1, notes: "" }],
-    photos: [], createdAt: "2026-06-15T18:00:00Z",
+    photos: [
+      { id: "ph-l08-1", url: "https://picsum.photos/seed/wall-crack/800/600", caption: "סדק בקיר קומה 3 - תיעוד לפיקוח", workItem: "בדיקות", area: "קומה 3" },
+      { id: "ph-l08-2", url: "https://picsum.photos/seed/concrete-test/800/600", caption: "נטילת דגימות בטון למעבדה", workItem: "בדיקות", area: "קומה 1" },
+    ],
+    createdAt: "2026-06-15T18:00:00Z",
   },
   {
     id: "l09", projectId: "p04", date: "2026-06-12", workHours: "9", weather: "שמש 27°C",
@@ -585,5 +594,129 @@ export const DEMO_DAILY_LOGS: DailyLog[] = [
     contractors: [{ id: "c020", contractor: "קבלן גמר אריאלי", trade: "גמר", workers: 5, notes: "" }],
     equipment: [],
     photos: [], createdAt: "2026-02-27T18:00:00Z",
+  },
+];
+
+// ─── SITE PHOTOS ──────────────────────────────────────────────────────────────
+
+export const DEMO_PHOTOS: SitePhoto[] = [
+  // נוף הכרמל - p01 (healthy, progressing well)
+  {
+    id: "sp01", projectId: "p01", dailyLogId: "l01",
+    fileName: "foundation_zone_b.jpg",
+    fileUrl: "https://picsum.photos/seed/foundation-b/800/600",
+    caption: "יציקת יסודות אזור B",
+    category: "התקדמות",
+    uploadedBy: "אריאל דייטש",
+    uploadedAt: "2026-06-16T09:30:00Z",
+  },
+  {
+    id: "sp02", projectId: "p01", dailyLogId: "l01",
+    fileName: "rebar_inspection.jpg",
+    fileUrl: "https://picsum.photos/seed/rebar-inspection/800/600",
+    caption: "בדיקות ברזל לפני יציקה",
+    category: "איכות",
+    uploadedBy: "אריאל דייטש",
+    uploadedAt: "2026-06-16T10:15:00Z",
+  },
+  {
+    id: "sp03", projectId: "p01", dailyLogId: "l02",
+    fileName: "floor6_concrete.jpg",
+    fileUrl: "https://picsum.photos/seed/floor6-concrete/800/600",
+    caption: "יציקת תקרת קומה 6",
+    category: "ביצוע",
+    uploadedBy: "רועי כהן",
+    uploadedAt: "2026-06-15T11:00:00Z",
+  },
+
+  // מגדלי הדר ירושלים - p04 (has issues)
+  {
+    id: "sp04", projectId: "p04", dailyLogId: "l08",
+    fileName: "plumbing_floor2.jpg",
+    fileUrl: "https://picsum.photos/seed/plumbing-floor2/800/600",
+    caption: "עבודות אינסטלציה קומה 2",
+    category: "ביצוע",
+    uploadedBy: "מאור אוחיון",
+    uploadedAt: "2026-06-15T08:45:00Z",
+  },
+  {
+    id: "sp05", projectId: "p04", dailyLogId: "l08",
+    fileName: "electrical_comm.jpg",
+    fileUrl: "https://picsum.photos/seed/electrical-comm/800/600",
+    caption: "עבודות חשמל חדר תקשורת",
+    category: "ביצוע",
+    uploadedBy: "אריאל דייטש",
+    uploadedAt: "2026-06-15T09:20:00Z",
+  },
+  {
+    id: "sp06", projectId: "p04", dailyLogId: "l08",
+    fileName: "wall_crack_doc.jpg",
+    fileUrl: "https://picsum.photos/seed/wall-crack-doc/800/600",
+    caption: "סדק בקיר דרומי - קומה 3",
+    category: "ליקוי",
+    uploadedBy: "אריאל דייטש",
+    uploadedAt: "2026-06-15T14:10:00Z",
+  },
+
+  // מרכז מסחרי גבעת זאב - p07 (on hold)
+  {
+    id: "sp07", projectId: "p07", dailyLogId: "l13",
+    fileName: "iron_delay.jpg",
+    fileUrl: "https://picsum.photos/seed/iron-delay/800/600",
+    caption: "עיכוב אספקת ברזל - מחסן ריק",
+    category: "חסם",
+    uploadedBy: "אריאל דייטש",
+    uploadedAt: "2026-06-10T10:00:00Z",
+  },
+
+  // נוף הכרמל - p02 (בניין B)
+  {
+    id: "sp08", projectId: "p02", dailyLogId: "l04",
+    fileName: "aluminum_west.jpg",
+    fileUrl: "https://picsum.photos/seed/aluminum-facade/800/600",
+    caption: "התקנת אלומיניום חזית מערבית",
+    category: "התקדמות",
+    uploadedBy: "דוד לוי",
+    uploadedAt: "2026-06-14T13:00:00Z",
+  },
+
+  // הר חוצבים - p12 (completed)
+  {
+    id: "sp09", projectId: "p12", dailyLogId: "l15",
+    fileName: "handover_floor4.jpg",
+    fileUrl: "https://picsum.photos/seed/handover-floor4/800/600",
+    caption: "בדיקות מסירה קומה 4",
+    category: "בקרה",
+    uploadedBy: "דוד לוי",
+    uploadedAt: "2026-02-27T11:00:00Z",
+  },
+
+  // נוף הכרמל - p01 (more recent for dashboard)
+  {
+    id: "sp10", projectId: "p01", dailyLogId: "l03",
+    fileName: "formwork_floor7.jpg",
+    fileUrl: "https://picsum.photos/seed/formwork-floor7/800/600",
+    caption: "הכנת תבניות קומה 7",
+    category: "ביצוע",
+    uploadedBy: "מאור אוחיון",
+    uploadedAt: "2026-06-14T09:00:00Z",
+  },
+  {
+    id: "sp11", projectId: "p06", dailyLogId: "l11",
+    fileName: "columns_b2.jpg",
+    fileUrl: "https://picsum.photos/seed/columns-basement/800/600",
+    caption: "יציקת עמודים קומה -2",
+    category: "ביצוע",
+    uploadedBy: "עידן פרץ",
+    uploadedAt: "2026-06-15T08:30:00Z",
+  },
+  {
+    id: "sp12", projectId: "p03", dailyLogId: "l06",
+    fileName: "street_lights.jpg",
+    fileUrl: "https://picsum.photos/seed/street-lights/800/600",
+    caption: "התקנת עמודי תאורה - כביש פנימי 2",
+    category: "התקדמות",
+    uploadedBy: "עידן פרץ",
+    uploadedAt: "2026-06-16T10:30:00Z",
   },
 ];

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowRight, ClipboardList, AlertTriangle, Ban, GitBranch, FileText, Plus } from "lucide-react";
+import { ArrowRight, ClipboardList, AlertTriangle, Ban, GitBranch, FileText, Plus, Camera } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +19,8 @@ import { useIssues } from "@/hooks/useIssues";
 import { useBlockers } from "@/hooks/useBlockers";
 import { useDecisions } from "@/hooks/useDecisions";
 import { useReports } from "@/hooks/useReports";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_PHOTOS } from "@/lib/demo-data";
 
 export const Route = createFileRoute("/projects/$projectId")({
   head: () => ({ meta: [{ title: "פרויקט - מהיסוד" }] }),
@@ -124,6 +126,43 @@ function ProjectDetail() {
           ) : (
             <Card><CardContent className="p-6 text-center text-muted-foreground">לא הוגשו יומנים לפרויקט</CardContent></Card>
           )}
+
+          {DEMO_MODE && (() => {
+            const projectPhotos = DEMO_PHOTOS.filter((p) => p.projectId === projectId)
+              .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+              .slice(0, 6);
+            return projectPhotos.length > 0 ? (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-muted-foreground" />
+                    תמונות אחרונות מהאתר
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/daily-logs">כל התמונות</Link>
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                    {projectPhotos.map((photo) => (
+                      <div key={photo.id} className="group relative overflow-hidden rounded-lg border">
+                        <img src={photo.fileUrl} alt={photo.caption} className="h-28 w-full object-cover transition-transform group-hover:scale-105" />
+                        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+                          <p className="p-2 text-xs font-medium text-white leading-tight">{photo.caption}</p>
+                        </div>
+                        <span className={`absolute right-1 top-1 rounded px-1.5 py-0.5 text-xs font-medium ${
+                          photo.category === "ליקוי" ? "bg-red-500 text-white" :
+                          photo.category === "חסם" ? "bg-orange-500 text-white" :
+                          photo.category === "התקדמות" ? "bg-green-500 text-white" :
+                          "bg-blue-500 text-white"
+                        }`}>{photo.category}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null;
+          })()}
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card>
