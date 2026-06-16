@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { DailyLog, ContractorRow, EquipmentRow, PhotoItem } from "@/lib/mock-data";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_DAILY_LOGS } from "@/lib/demo-data";
 
 // Gray placeholder shown when a real storage URL is unavailable
 const PHOTO_PLACEHOLDER =
@@ -74,6 +76,11 @@ export type CreateDailyLogInput = {
 
 export const dailyLogRepository = {
   async list(filter?: { projectId?: string }): Promise<DailyLog[]> {
+    if (DEMO_MODE) {
+      return filter?.projectId
+        ? DEMO_DAILY_LOGS.filter((l) => l.projectId === filter.projectId)
+        : [...DEMO_DAILY_LOGS];
+    }
     let query = supabase.from("daily_log").select(LOG_SELECT).order("date", { ascending: false });
     if (filter?.projectId) query = query.eq("project_id", filter.projectId);
     const { data, error } = await query;
@@ -82,6 +89,7 @@ export const dailyLogRepository = {
   },
 
   async get(id: string): Promise<DailyLog | null> {
+    if (DEMO_MODE) return DEMO_DAILY_LOGS.find((l) => l.id === id) ?? null;
     const { data, error } = await supabase
       .from("daily_log")
       .select(LOG_SELECT)

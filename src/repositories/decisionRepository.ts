@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Decision, DecisionStatus } from "@/lib/mock-data";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_DECISIONS } from "@/lib/demo-data";
 
 function dbToDecision(row: Record<string, unknown>): Decision {
   return {
@@ -27,6 +29,11 @@ export type CreateDecisionInput = {
 
 export const decisionRepository = {
   async list(filter?: { projectId?: string }): Promise<Decision[]> {
+    if (DEMO_MODE) {
+      return filter?.projectId
+        ? DEMO_DECISIONS.filter((d) => d.projectId === filter.projectId)
+        : [...DEMO_DECISIONS];
+    }
     let query = supabase
       .from("decision")
       .select("*")

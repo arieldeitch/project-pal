@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Site, SiteStatus, SiteType } from "@/lib/mock-data";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_SITES } from "@/lib/demo-data";
 
 function dbToSite(row: Record<string, unknown>): Site {
   return {
@@ -17,6 +19,7 @@ function dbToSite(row: Record<string, unknown>): Site {
 
 export const siteRepository = {
   async list(): Promise<Site[]> {
+    if (DEMO_MODE) return [...DEMO_SITES];
     const { data, error } = await supabase
       .from("site")
       .select("*")
@@ -26,6 +29,7 @@ export const siteRepository = {
   },
 
   async get(id: string): Promise<Site | null> {
+    if (DEMO_MODE) return DEMO_SITES.find((s) => s.id === id) ?? null;
     const { data, error } = await supabase
       .from("site")
       .select("*")

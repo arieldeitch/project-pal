@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Issue, IssueStatus, Severity, PhotoItem } from "@/lib/mock-data";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_ISSUES } from "@/lib/demo-data";
 
 const PHOTO_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='14'%3Eאין תמונה%3C/text%3E%3C/svg%3E";
@@ -60,6 +62,11 @@ export type CreateIssueInput = {
 
 export const issueRepository = {
   async list(filter?: { projectId?: string }): Promise<Issue[]> {
+    if (DEMO_MODE) {
+      return filter?.projectId
+        ? DEMO_ISSUES.filter((i) => i.projectId === filter.projectId)
+        : [...DEMO_ISSUES];
+    }
     let query = supabase
       .from("issue")
       .select(ISSUE_SELECT)

@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Blocker, BlockerStatus, Severity } from "@/lib/mock-data";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_BLOCKERS } from "@/lib/demo-data";
 
 function dbToBlocker(row: Record<string, unknown>): Blocker {
   return {
@@ -29,6 +31,11 @@ export type CreateBlockerInput = {
 
 export const blockerRepository = {
   async list(filter?: { projectId?: string }): Promise<Blocker[]> {
+    if (DEMO_MODE) {
+      return filter?.projectId
+        ? DEMO_BLOCKERS.filter((b) => b.projectId === filter.projectId)
+        : [...DEMO_BLOCKERS];
+    }
     let query = supabase
       .from("blocker")
       .select("*")

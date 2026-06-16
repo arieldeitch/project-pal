@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import type { Report, ReportStatus, ReportType, DailyLog, Project } from "@/lib/mock-data";
 import { dailyLogRepository } from "./dailyLogRepository";
 import { projectRepository } from "./projectRepository";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_REPORTS, DEMO_DAILY_LOGS, DEMO_PROJECTS } from "@/lib/demo-data";
 
 function dbToReport(row: Record<string, unknown>): Report {
   return {
@@ -24,6 +26,11 @@ export interface ReportDetail {
 
 export const reportRepository = {
   async list(filter?: { projectId?: string }): Promise<Report[]> {
+    if (DEMO_MODE) {
+      return filter?.projectId
+        ? DEMO_REPORTS.filter((r) => r.projectId === filter.projectId)
+        : [...DEMO_REPORTS];
+    }
     let query = supabase
       .from("report")
       .select("*")
@@ -35,6 +42,14 @@ export const reportRepository = {
   },
 
   async getDetail(id: string): Promise<ReportDetail> {
+    if (DEMO_MODE) {
+      const report = DEMO_REPORTS.find((r) => r.id === id) ?? DEMO_REPORTS[0];
+      const log = report.dailyLogId
+        ? (DEMO_DAILY_LOGS.find((l) => l.id === report.dailyLogId) ?? null)
+        : (DEMO_DAILY_LOGS.find((l) => l.projectId === report.projectId) ?? null);
+      const project = DEMO_PROJECTS.find((p) => p.id === report.projectId) ?? null;
+      return { report, log, project };
+    }
     const { data, error } = await supabase
       .from("report")
       .select("*")

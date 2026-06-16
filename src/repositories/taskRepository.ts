@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Task, TaskStatus, TaskPriority, TaskUpdate, TaskComment } from "@/lib/mock-data";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_TASKS } from "@/lib/demo-data";
 
 const TASK_SELECT = `
   *,
@@ -56,6 +58,7 @@ function dbToTask(row: Record<string, unknown>): Task {
 
 export const taskRepository = {
   async list(): Promise<Task[]> {
+    if (DEMO_MODE) return [...DEMO_TASKS];
     const { data, error } = await supabase
       .from("task")
       .select(TASK_SELECT)
@@ -65,6 +68,7 @@ export const taskRepository = {
   },
 
   async listByProject(projectId: string): Promise<Task[]> {
+    if (DEMO_MODE) return DEMO_TASKS.filter((t) => t.projectId === projectId);
     const { data, error } = await supabase
       .from("task")
       .select(TASK_SELECT)
@@ -75,6 +79,7 @@ export const taskRepository = {
   },
 
   async get(id: string): Promise<Task | null> {
+    if (DEMO_MODE) return DEMO_TASKS.find((t) => t.id === id) ?? null;
     const { data, error } = await supabase
       .from("task")
       .select(TASK_SELECT)

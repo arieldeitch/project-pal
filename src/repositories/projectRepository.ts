@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Project, ProjectStatus } from "@/lib/mock-data";
+import { DEMO_MODE } from "@/lib/demo-mode";
+import { DEMO_PROJECTS } from "@/lib/demo-data";
 
 function dbToProject(row: Record<string, unknown>): Project {
   return {
@@ -17,6 +19,7 @@ function dbToProject(row: Record<string, unknown>): Project {
 
 export const projectRepository = {
   async list(): Promise<Project[]> {
+    if (DEMO_MODE) return [...DEMO_PROJECTS];
     const { data, error } = await supabase
       .from("project")
       .select("*")
@@ -26,6 +29,7 @@ export const projectRepository = {
   },
 
   async get(id: string): Promise<Project | null> {
+    if (DEMO_MODE) return DEMO_PROJECTS.find((p) => p.id === id) ?? null;
     const { data, error } = await supabase
       .from("project")
       .select("*")
